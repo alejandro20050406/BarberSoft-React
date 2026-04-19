@@ -1,10 +1,7 @@
+import AppRouter from "../routes/AppRouter";
+
 function App() {
-  return (
-    <main>
-      <h1>BarberSoft</h1>
-      <p>Base del frontend lista para conectar el router principal.</p>
-    </main>
-  );
+  return <AppRouter />;
 }
 
 export default App;
