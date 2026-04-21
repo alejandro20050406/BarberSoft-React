@@ -23,10 +23,12 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 `con base en este contexto, dado que soy el integrante angel, dime cuáles son los primeros pasos a seguir para cumplir satisfactoriamente mis tareas. dime los pasos, no agregues código ni edites archivos, a menos que te lo diga explícitamente`
 
 **Proceso ejecutado por Codex:**
+
 - Lectura del archivo de contexto compartido:
   - `C:\Users\aleja\Tec\PW\barbersoft_resumen_conversacion_angel.md`
 
 **Respuesta dada al usuario (resumen):**
+
 - Se listaron 12 pasos de arranque para Ángel, incluyendo:
   - alinear alcance
   - rama personal
@@ -46,6 +48,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 `ahora, dime por donde empiezo, cuales archivos debo editar, crear, etc`
 
 **Procesos ejecutados por Codex:**
+
 - Inspección de estructura del repo y árbol `src`:
   - listado de raíz del proyecto
   - listado recursivo de archivos dentro de `src`
@@ -59,11 +62,13 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 - Verificación de archivos vacíos (0 bytes) en `src`.
 
 **Hallazgo importante comunicado:**
+
 - El proyecto tenía mucha estructura creada, pero gran parte de archivos estaban vacíos.
 - `App.jsx` seguía con plantilla Vite.
 - `AppRouter.jsx` estaba vacío.
 
 **Respuesta dada al usuario (resumen):**
+
 - Se entregó orden de arranque por prioridad y con rutas absolutas de archivos:
   1. arranque app (`main.jsx`, `App.jsx`, `providers.jsx`)
   2. router (`AppRouter.jsx`, `paths.js`, `ProtectedRoute.jsx`, `roleRoutes.js`)
@@ -81,10 +86,12 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 `ahora, llena el archivo main.jsx por favor`
 
 **Proceso ejecutado por Codex:**
+
 - Edición directa de:
   - `src/app/main.jsx`
 
 **Cambios aplicados:**
+
 - import de `StrictMode`
 - import de `createRoot`
 - import de `App`
@@ -93,6 +100,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 - render de `<App />`
 
 **Respuesta dada al usuario:**
+
 - Confirmación de archivo actualizado y resumen de lo implementado.
 
 ---
@@ -103,6 +111,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 `todas estas tareas que numeraste son de angel, cierto? no de los otros integrantes del equipo`
 
 **Respuesta dada al usuario:**
+
 - Sí, están alineadas a la parte de Ángel (columna vertebral frontend y base de ventas/mis ventas), con nota de ajustar si el equipo reasignó tareas recientemente.
 
 ---
@@ -113,14 +122,17 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 `perfecto, ahora continuemos con App.jsx`
 
 **Proceso ejecutado por Codex:**
+
 - Edición directa de:
   - `src/app/App.jsx`
 
 **Cambios aplicados:**
+
 - eliminación de plantilla Vite
 - reemplazo por componente base simple de BarberSoft
 
 **Respuesta dada al usuario:**
+
 - Confirmación de actualización y propuesta de continuar con `AppRouter.jsx`.
 
 ---
@@ -131,6 +143,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 `por favor, continúa con AppRouter.jsx`
 
 **Procesos ejecutados por Codex (cronológico):**
+
 1. Verificación de dependencia:
    - `npm ls react-router-dom --depth=0` (falló por política de ejecución de PowerShell)
    - `cmd /c npm ls react-router-dom --depth=0` (confirmó no instalado)
@@ -151,6 +164,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
    - Reintento con escalación: **build exitoso**
 
 **Respuesta dada al usuario (resumen):**
+
 - `AppRouter.jsx` funcional y conectado.
 - `App.jsx` conectado a router.
 - `index.html` corregido al entrypoint real.
@@ -170,6 +184,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 4. el nombre del archivo md deberá ser "barbersoft-react-abril18.md"`
 
 **Proceso ejecutado por Codex:**
+
 - lectura en UTF-8 del archivo base inicial
 - creación de carpeta:
   - `contexto/`
@@ -226,6 +241,7 @@ Se tomó como base el cronograma de 6 semanas, donde Ángel tiene como responsab
 De acuerdo con el cronograma, Ángel es responsable de:
 
 ### Semana 1
+
 - crear proyecto con React + Vite
 - definir estructura de carpetas
 - configurar React Router
@@ -233,27 +249,32 @@ De acuerdo con el cronograma, Ángel es responsable de:
 - dejar lista la navegación principal
 
 ### Semana 2
+
 - integrar rutas
 - crear mocks compartidos
 - preparar utilidades
 - preparar hooks base
 
 ### Semana 3
+
 - formularios reutilizables
 - utilidades de cálculo
 - estructura de datos para ventas
 
 ### Semana 4
+
 - construir flujo de **venta de producto**
 - construir flujo de **venta de servicio**
 - navegación y confirmaciones
 
 ### Semana 5
+
 - construir pantalla **Mis Ventas**
 - filtros por fecha
 - tabla de resultados
 
 ### Semana 6
+
 - integración total
 - limpieza de rutas
 - refactor
@@ -680,6 +701,7 @@ src/
 ```
 
 Con esto ya se puede dejar listo:
+
 - menú principal
 - login admin
 - login empleado
@@ -743,14 +765,28 @@ export const PATHS = {
 ## 10. Estructura de mocks sugerida
 
 ### `users.mock.js`
+
 ```js
 export const usersMock = [
-  { id: 1, username: "admin", password: "1234", role: "admin", name: "Administrador" },
-  { id: 2, username: "juan", password: "1234", role: "employee", name: "Juan Pérez" },
+  {
+    id: 1,
+    username: "admin",
+    password: "1234",
+    role: "admin",
+    name: "Administrador",
+  },
+  {
+    id: 2,
+    username: "juan",
+    password: "1234",
+    role: "employee",
+    name: "Juan Pérez",
+  },
 ];
 ```
 
 ### `products.mock.js`
+
 ```js
 export const productsMock = [
   {
@@ -761,12 +797,13 @@ export const productsMock = [
     stock: 10,
     minStock: 2,
     purchasePrice: 80,
-    salePrice: 160
+    salePrice: 160,
   },
 ];
 ```
 
 ### `services.mock.js`
+
 ```js
 export const servicesMock = [
   {
@@ -774,12 +811,13 @@ export const servicesMock = [
     category: "Corte de cabello",
     name: "Low Fade",
     price: 180,
-    description: "Degradado bajo"
+    description: "Degradado bajo",
   },
 ];
 ```
 
 ### `clients.mock.js`
+
 ```js
 export const clientsMock = [
   { id: 1, fullName: "Aude Ortiz Migues", phone: "3121516322", visits: 28 },
@@ -849,4 +887,3 @@ Lo más importante que quedó definido fue:
 - cómo debe organizar rutas, mocks, layouts y módulos
 
 Con esto, ya existe una guía clara para comenzar el desarrollo del frontend de BarberSoft sin depender todavía del backend real.
-
