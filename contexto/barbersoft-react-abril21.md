@@ -13,6 +13,17 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 - se instaló `react-router-dom`
 - se validó compilación con `vite build` exitosa
 
+Adicionalmente, en una sesión posterior se trabajó la **Semana 1 de Miguel**, generando el sistema visual base del proyecto:
+
+- se generó `src/styles/variables.css` con paleta oscura/dorada, tipografía, espaciado, bordes, sombras, transiciones, layout y z-index
+- se generó `src/styles/globals.css` con reset, tipografía base, scrollbar personalizado y clases utilitarias
+- se generó `src/components/ui/Button.jsx` con variantes primary, secondary, danger, ghost y tamaños sm, md, lg
+- se generó `src/components/ui/Button.module.css`
+- se generó `src/components/ui/Input.jsx` con label, error, hint, required y disabled
+- se generó `src/components/ui/Input.module.css`
+- se generó `src/components/ui/Table.jsx` con estado vacío, skeleton loading y columna de acciones
+- se generó `src/components/ui/Table.module.css`
+
 ---
 
 ## 2. Contenido del chat (pregunta-respuesta + procesos ejecutados)
@@ -42,7 +53,7 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 
 ---
 
-### 2.2 Solicitud de “por dónde empiezo” con archivos concretos
+### 2.2 Solicitud de "por dónde empiezo" con archivos concretos
 
 **Usuario:**  
 `ahora, dime por donde empiezo, cuales archivos debo editar, crear, etc`
@@ -193,6 +204,163 @@ Se confirmó que sus tareas son de base frontend (arranque, rutas, layouts, nave
 
 ---
 
+### 2.8 Sesión de Miguel — Semana 1: sistema visual base
+
+**Usuario:**  
+`yo soy Miguel`
+
+**Respuesta dada al usuario:**
+
+- Se identificó al usuario como Miguel según el itinerario.
+- Se listaron sus responsabilidades por semana, con énfasis en que su rol es calidad visual, componentes reutilizables y QA.
+
+---
+
+**Usuario:**  
+`estamos en la semana 1`
+
+**Respuesta dada al usuario:**
+
+- Se confirmaron los 3 entregables de la semana 1: estilos globales, componentes reutilizables y revisión de consistencia.
+- Se presentó el orden completo de trabajo al solicitarlo:
+  1. `variables.css`
+  2. `globals.css`
+  3. `Button.jsx`
+  4. `Input.jsx`
+  5. `Table.jsx`
+  6. `Badge.jsx`
+  7. `Modal.jsx`
+  8. `EmptyState.jsx`
+  9. `LoadingSpinner.jsx`
+  10. `ErrorMessage.jsx`
+  11. revisión de consistencia con Ángel
+
+---
+
+**Usuario:**  
+`con esos` (refiriéndose a `variables.css` y `globals.css`)
+
+**Procesos ejecutados:**
+
+- Lectura de `/mnt/skills/public/frontend-design/SKILL.md`
+- Generación de `src/styles/variables.css`:
+  - paleta oscura/dorada (negro carbón + dorado `#c9a84c`)
+  - fuentes: `Playfair Display` (display) y `DM Sans` (cuerpo)
+  - escala tipográfica completa
+  - sistema de espaciado con tokens `--space-*`
+  - bordes, sombras, transiciones, layout y z-index
+- Generación de `src/styles/globals.css`:
+  - importa fuentes desde Google Fonts
+  - importa `variables.css`
+  - reset completo
+  - estilos base de body, tipografía, links, formularios
+  - scrollbar personalizado oscuro con acento dorado
+  - selección de texto con fondo dorado
+  - clases utilitarias: `.sr-only`, `.truncate`, `.text-muted`, `.text-gold`, `.divider`
+  - `#root` con flex column y min-height 100vh
+
+**Respuesta dada al usuario:**
+
+- Confirmación de archivos generados con resumen de decisiones de diseño.
+- Aclaración de que `variables.css` no necesita importarse en `main.jsx` porque `globals.css` ya lo importa internamente.
+
+---
+
+**Usuario:**  
+`si ya tengo un archivo para globales y variables?`
+
+**Respuesta dada al usuario:**
+
+- Se confirmó que los archivos ya existían vacíos en `src/styles/`.
+- Instrucción: copiar el contenido generado directamente en cada archivo existente.
+
+---
+
+**Usuario:**  
+`continua con componentes` (tras preguntar sobre `components.css` y `layout.css`)
+
+**Aclaración previa:**
+
+- Se confirmó que `components.css` y `layout.css` también corresponden a Miguel esta semana, pero se dejaron para después a petición del usuario.
+
+---
+
+**Usuario:**  
+`con css modules` (al elegir estrategia de estilos)
+
+**Decisión tomada:**
+
+- Cada componente tendrá su propio par de archivos dentro de `src/components/ui/`:
+  - `ComponentName.jsx`
+  - `ComponentName.module.css`
+
+---
+
+**Usuario:**  
+(imagen de VS Code mostrando archivos existentes en `src/components/ui/`)
+
+**Archivos detectados ya existentes vacíos:**
+- `Button.jsx`, `Card.jsx`, `ConfirmDialog.jsx`, `EmptyState.jsx`, `Input.jsx`, `Loader.jsx`, `Modal.jsx`, `Select.jsx`, `Table.jsx`
+
+**Decisión tomada:**
+
+- No usar subcarpetas por componente, sino dejar todos los archivos directamente en `src/components/ui/`.
+- Esta semana solo se llenan los 3 del itinerario: `Button`, `Input`, `Table`.
+- El resto se deja vacío para semanas siguientes.
+
+---
+
+**Usuario:**  
+`si` (confirmar generación de `Button.jsx`)
+
+**Procesos ejecutados:**
+
+- Generación de `src/components/ui/Button.jsx`:
+  - props: `variant`, `size`, `fullWidth`, `loading`, `disabled`, `onClick`, `type`, `children`
+  - variantes: `primary`, `secondary`, `danger`, `ghost`
+  - tamaños: `sm`, `md`, `lg`
+  - spinner animado cuando `loading={true}`
+- Generación de `src/components/ui/Button.module.css`:
+  - estilos por variante con hover, active y disabled
+  - sombra dorada en hover para primary y secondary
+  - animación `spin` para el spinner
+
+---
+
+**Usuario:**  
+`porfavor` (confirmar generación de `Input.jsx`)
+
+**Procesos ejecutados:**
+
+- Generación de `src/components/ui/Input.jsx`:
+  - props: `label`, `name`, `type`, `value`, `onChange`, `placeholder`, `error`, `hint`, `disabled`, `required`, `fullWidth`
+  - muestra asterisco dorado cuando `required={true}`
+  - borde rojo en estado de error
+  - mensaje de error y hint mutuamente excluyentes
+- Generación de `src/components/ui/Input.module.css`:
+  - focus con borde dorado y glow
+  - error con borde rojo y glow rojo
+
+---
+
+**Usuario:**  
+`si` (confirmar generación de `Table.jsx`)
+
+**Procesos ejecutados:**
+
+- Generación de `src/components/ui/Table.jsx`:
+  - props: `columns`, `data`, `actions`, `loading`, `emptyMessage`
+  - columnas definidas con `{ key, label, align }`
+  - columna opcional de acciones con render function `(row) => ReactNode`
+  - estado vacío con ícono y mensaje personalizable
+  - skeleton loading con 5 filas animadas
+- Generación de `src/components/ui/Table.module.css`:
+  - cabecera oscura con texto uppercase y letra espaciada
+  - hover en filas
+  - animación shimmer para skeleton
+
+---
+
 ## 3. Contexto integrado (chat + archivo base inicial)
 
 Esta sección une el progreso real del chat con el contexto fundacional enviado al inicio.
@@ -206,6 +374,11 @@ Esta sección une el progreso real del chat con el contexto fundacional enviado 
 - `index.html` ya apunta al archivo correcto de entrada (`/src/app/main.jsx`).
 - Dependencia `react-router-dom` instalada.
 - Build de producción validado exitosamente.
+- `src/styles/variables.css` generado con sistema de diseño completo (paleta oscura/dorada).
+- `src/styles/globals.css` generado con reset, tipografía base y utilidades.
+- `src/components/ui/Button.jsx` + `Button.module.css` generados y listos.
+- `src/components/ui/Input.jsx` + `Input.module.css` generados y listos.
+- `src/components/ui/Table.jsx` + `Table.module.css` generados y listos.
 
 ### 3.2 Decisiones de trabajo consolidadas para Ángel
 
@@ -215,7 +388,18 @@ Esta sección une el progreso real del chat con el contexto fundacional enviado 
 - Mantener separación por rol (público/admin/empleado).
 - Usar mocks para avanzar sin backend.
 
-### 3.3 Documento base original integrado (contenido completo)
+### 3.3 Decisiones de trabajo consolidadas para Miguel
+
+- Estilo de componentes: CSS Modules (`.module.css` por componente).
+- Los archivos van directamente en `src/components/ui/` sin subcarpetas.
+- Paleta de diseño: oscura con dorado como acento principal.
+- Fuentes: `Playfair Display` para títulos, `DM Sans` para cuerpo.
+- Esta semana (semana 1) solo se completan: `Button`, `Input`, `Table`.
+- `Card`, `ConfirmDialog`, `EmptyState`, `Loader`, `Modal`, `Select` se dejan vacíos para semanas siguientes.
+- `components.css` y `layout.css` quedan pendientes para completar en semana 1.
+- La revisión de consistencia con Ángel se hace cuando él tenga sus layouts listos.
+
+### 3.4 Documento base original integrado (contenido completo)
 
 > Fuente: `C:\Users\aleja\Tec\PW\barbersoft_resumen_conversacion_angel.md`
 
