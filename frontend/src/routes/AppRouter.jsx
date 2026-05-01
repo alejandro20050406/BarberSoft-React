@@ -18,6 +18,10 @@ import ProductCategoriesPage from "../pages/admin/ProductCategoriesPage";
 import ServiceCategoriesPage from "../pages/admin/ServiceCategoriesPage";
 import ProductsPage from "../pages/admin/ProductsPage";
 import ServicesPage from "../pages/admin/ServicesPage";
+import EmployeesPage from "../pages/admin/EmployeesPage";
+import ClientsPage from "../pages/admin/ClientsPage";
+import MySalesPage from "../pages/employee/MySalesPage";
+import CashClosingPage from "../pages/employee/CashClosingPage";
 
 export default function AppRouter() {
   return (
@@ -39,8 +43,10 @@ export default function AppRouter() {
           <Route path={PATHS.adminSalesList} element={<div>Lista de Ventas</div>} />
           <Route path={PATHS.adminReports} element={<div>Reportes</div>} />
 
-           <Route path={PATHS.adminProducts} element={<ProductsPage />} />
+          <Route path={PATHS.adminProducts} element={<ProductsPage />} />
           <Route path={PATHS.adminServices} element={<ServicesPage />} />
+          <Route path={PATHS.adminEmployees} element={<EmployeesPage />} />
+          <Route path={PATHS.adminClients} element={<ClientsPage />} />
           <Route path={PATHS.adminProductCategories} element={<ProductCategoriesPage />} />
           <Route path={PATHS.adminServiceCategories} element={<ServiceCategoriesPage />} />
         </Route>
@@ -50,8 +56,8 @@ export default function AppRouter() {
           <Route path={PATHS.employee} element={<EmployeeMenuPage />} />
           <Route path={PATHS.employeeSalesProduct} element={<div>Venta de Producto</div>} />
           <Route path={PATHS.employeeSalesService} element={<div>Venta de Servicio</div>} />
-          <Route path={PATHS.employeeMySales} element={<div>Mis Ventas</div>} />
-          <Route path={PATHS.employeeCashClosing} element={<div>Corte de Caja</div>} />
+          <Route path={PATHS.employeeMySales} element={<MySalesPage />} />
+          <Route path={PATHS.employeeCashClosing} element={<CashClosingPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to={PATHS.home} replace />} />

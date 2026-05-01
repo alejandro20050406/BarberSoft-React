@@ -196,3 +196,91 @@ input, textarea, select {
   flex-direction: column;
   min-height: 100vh;
 }
+
+/* ============================================
+   LAYOUTS POR ROL
+   ============================================ */
+
+.admin-layout,
+.employee-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.admin-content,
+.employee-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--content-padding);
+}
+
+.sidebar {
+  display: flex;
+  flex: 0 0 var(--sidebar-width);
+  flex-direction: column;
+  gap: var(--space-6);
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-4);
+  background: var(--color-bg-card);
+  border-right: var(--border-thin);
+}
+
+.sidebar-title {
+  color: var(--color-gold);
+  font-size: var(--text-xl);
+}
+
+.role-menu ul {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.menu-link {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-soft);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.menu-link:hover,
+.menu-link.active {
+  color: var(--color-black);
+  background: var(--color-gold);
+}
+
+.logout-button {
+  width: 100%;
+  margin-top: auto;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  background: var(--color-bg-input);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.dashboard-page {
+  display: grid;
+  gap: var(--space-3);
+  max-width: var(--content-max-width);
+}
+
+@media (max-width: 760px) {
+  .admin-layout,
+  .employee-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    flex-basis: auto;
+    min-height: auto;
+    border-right: none;
+    border-bottom: var(--border-thin);
+  }
+
+  .role-menu ul {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+}

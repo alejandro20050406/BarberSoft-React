@@ -1,0 +1,11 @@
+{
+  "name": "barbersoft-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "lint": "node --check src/index.js && node --check src/app.js && node --check src/config/env.js && node --check src/controllers/healthController.js && node --check src/routes/healthRoutes.js && node --check src/utils/http.js"
+  }
+}
