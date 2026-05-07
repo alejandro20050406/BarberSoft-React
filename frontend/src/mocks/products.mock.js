@@ -8,5 +8,6 @@ export const productsMock = [
     minStock: 2,
     purchasePrice: 80,
     salePrice: 160,
+    status: "active",
   },
 ];

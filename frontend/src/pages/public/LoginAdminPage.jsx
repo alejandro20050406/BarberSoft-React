@@ -1,11 +1,9 @@
-// src/pages/public/AdminLoginPage.jsx
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PATHS } from "../../routes/paths";
 import { usersMock } from "../../mocks/users.mock";
+import { PATHS } from "../../routes/paths";
 
-const AdminLoginPage = () => {
+const LoginAdminPage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -13,43 +11,40 @@ const AdminLoginPage = () => {
 
   const handleLogin = () => {
     const user = usersMock.find(
-      (u) =>
-        u.username === username &&
-        u.password === password &&
-        u.role === "admin"
+      (candidate) =>
+        candidate.username === username &&
+        candidate.password === password &&
+        candidate.role === "admin" &&
+        candidate.status === "active",
     );
 
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-      navigate(PATHS.admin);
-    } else {
-      setError("Credenciales incorrectas o no tienes acceso de administrador.");
+    if (!user) {
+      setError("Credenciales incorrectas o acceso de administrador inactivo.");
+      return;
     }
+
+    localStorage.setItem("user", JSON.stringify(user));
+    navigate(PATHS.admin);
   };
 
   return (
     <div className="login-page">
-      <h2>Acceso Administrador</h2>
+      <section className="login-card">
+        <span className="eyebrow">BarberSoft</span>
+        <h1>Acceso administrador</h1>
+        <p>Gestion de catalogos, ventas, reportes y permisos.</p>
 
-      <input
-        type="text"
-        placeholder="Usuario"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+        <input className="field" type="text" placeholder="Usuario" value={username} onChange={(event) => setUsername(event.target.value)} />
+        <input className="field" type="password" placeholder="Contrasena" value={password} onChange={(event) => setPassword(event.target.value)} />
 
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        {error && <p className="form-error">{error}</p>}
 
-      {error && <p className="login-error">{error}</p>}
-
-      <button onClick={handleLogin}>Ingresar</button>
+        <button className="button button-primary" type="button" onClick={handleLogin}>
+          Ingresar
+        </button>
+      </section>
     </div>
   );
 };
 
-export default AdminLoginPage;
+export default LoginAdminPage;
