@@ -1,11 +1,9 @@
-// src/pages/public/EmployeeLoginPage.jsx
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PATHS } from "../../routes/paths";
 import { usersMock } from "../../mocks/users.mock";
+import { PATHS } from "../../routes/paths";
 
-const EmployeeLoginPage = () => {
+const LoginEmployeePage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -13,43 +11,40 @@ const EmployeeLoginPage = () => {
 
   const handleLogin = () => {
     const user = usersMock.find(
-      (u) =>
-        u.username === username &&
-        u.password === password &&
-        u.role === "employee"
+      (candidate) =>
+        candidate.username === username &&
+        candidate.password === password &&
+        candidate.role === "employee" &&
+        candidate.status === "active",
     );
 
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-      navigate(PATHS.employee);
-    } else {
-      setError("Credenciales incorrectas o no tienes acceso de empleado.");
+    if (!user) {
+      setError("Credenciales incorrectas o acceso de empleado inactivo.");
+      return;
     }
+
+    localStorage.setItem("user", JSON.stringify(user));
+    navigate(PATHS.employee);
   };
 
   return (
     <div className="login-page">
-      <h2>Acceso Empleado</h2>
+      <section className="login-card">
+        <span className="eyebrow">BarberSoft</span>
+        <h1>Acceso empleado</h1>
+        <p>Registro de ventas, mis ventas y corte de caja.</p>
 
-      <input
-        type="text"
-        placeholder="Usuario"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+        <input className="field" type="text" placeholder="Usuario" value={username} onChange={(event) => setUsername(event.target.value)} />
+        <input className="field" type="password" placeholder="Contrasena" value={password} onChange={(event) => setPassword(event.target.value)} />
 
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        {error && <p className="form-error">{error}</p>}
 
-      {error && <p className="login-error">{error}</p>}
-
-      <button onClick={handleLogin}>Ingresar</button>
+        <button className="button button-primary" type="button" onClick={handleLogin}>
+          Ingresar
+        </button>
+      </section>
     </div>
   );
 };
 
-export default EmployeeLoginPage;
+export default LoginEmployeePage;

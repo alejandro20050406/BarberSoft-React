@@ -1,5 +1,3 @@
-// src/pages/public/HomePage.jsx
-
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../routes/paths";
 
@@ -7,19 +5,26 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="home-page">
-      <h1>BarberSoft</h1>
-      <p>Selecciona tu tipo de acceso</p>
+    <main className="home-page">
+      <section className="home-hero">
+        <div>
+          <span className="eyebrow">Monkey's Barber Shop</span>
+          <h1>BarberSoft</h1>
+          <p>Control de servicios, productos, ventas e inventario por rol.</p>
+        </div>
 
-      <div className="home-buttons">
-        <button onClick={() => navigate(PATHS.adminLogin)}>
-          Administrador
-        </button>
-        <button onClick={() => navigate(PATHS.employeeLogin)}>
-          Empleado
-        </button>
-      </div>
-    </div>
+        <div className="access-grid">
+          <button className="access-card" type="button" onClick={() => navigate(PATHS.adminLogin)}>
+            <strong>Administrador</strong>
+            <span>Catalogos, reportes y gestion completa.</span>
+          </button>
+          <button className="access-card" type="button" onClick={() => navigate(PATHS.employeeLogin)}>
+            <strong>Empleado</strong>
+            <span>Ventas, comisiones y corte de caja.</span>
+          </button>
+        </div>
+      </section>
+    </main>
   );
 };
 

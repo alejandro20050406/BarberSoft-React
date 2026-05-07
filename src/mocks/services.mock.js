@@ -5,5 +5,6 @@ export const servicesMock = [
     name: "Low Fade",
     price: 180,
     description: "Degradado bajo",
+    status: "active",
   },
 ];
