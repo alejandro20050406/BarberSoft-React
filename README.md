@@ -1,17 +1,17 @@
-﻿# BarberSoft React
+# BarberSoft
 
-Frontend web para la gestion operativa de una barberia (caso de estudio: Monkey's Barber Shop).
+Aplicacion web para la gestion operativa de una barberia (caso de estudio: Monkey's Barber Shop).
 
 ## Contexto del proyecto
 
 BarberSoft nace para resolver un problema operativo real: el registro manual de servicios y ventas (en libreta), que dificulta el control de ingresos, comisiones, inventario y reportes.
 
-Este repositorio representa la implementacion del frontend en React.
+Este repositorio separa la implementacion del frontend en React y la base inicial de API en Node.js.
 
 ## Nota importante sobre tecnologia
 
-- Este proyecto se apega a React + Vite para frontend.
-- Por el momento no existe un backend/framework de backend definido.
+- El frontend usa React + Vite.
+- La API inicial usa Node.js con el modulo nativo `http`, sin framework externo por ahora.
 - Cualquier referencia historica en documentos a PHP, XAMPP u otras decisiones de backend se considera fuera del alcance actual de este repositorio.
 
 ## Objetivo del sistema
@@ -48,62 +48,109 @@ Los modulos funcionales definidos para BarberSoft son:
 - No hay portal para clientes finales.
 - No se incluye agenda/citas para clientes en esta etapa.
 - No es aplicacion de escritorio.
-- Backend y persistencia definitiva se definiran en una fase posterior.
+- Persistencia definitiva se definira en una fase posterior.
 
 ## Stack tecnico actual
 
 - React
 - Vite
+- Node.js
 - JavaScript (ES Modules)
 - ESLint
 
-## Estructura de frontend (actual)
+## Estructura del proyecto
 
 ```text
-src/
-|- app/
-|- assets/
-|- components/
-|- features/
-|- hooks/
-|- layouts/
-|- mocks/
-|- pages/
-|- routes/
-|- services/
-|- styles/
-|- types/
-`- utils/
+frontend/
+|- public/
+|- src/
+|  |- app/
+|  |- assets/
+|  |- components/
+|  |- features/
+|  |- hooks/
+|  |- layouts/
+|  |- mocks/
+|  |- pages/
+|  |- routes/
+|  |- services/
+|  |- styles/
+|  |- types/
+|  `- utils/
+|- index.html
+|- package.json
+`- vite.config.js
+
+backend/
+|- src/
+|  |- config/
+|  |- controllers/
+|  |- routes/
+|  |- utils/
+|  |- app.js
+|  `- index.js
+|- .env.example
+`- package.json
 ```
 
 ## Estado actual
 
 - Existe una base de estructura por modulos y carpetas.
 - El repositorio se encuentra en fase de construccion incremental.
-- La conexion a backend aun no aplica; se trabajara con contratos/mocks hasta definir arquitectura de servidor.
+- Existe una API base con endpoint de salud y variables de entorno.
+- La conexion funcional frontend-backend se integrara de forma incremental.
 
 ## Requisitos previos
 
 - Node.js 20+ recomendado
 - npm 10+ recomendado
 
-## Scripts
+## Scripts desde la raiz
 
 ```bash
-npm run dev
+npm run dev:frontend
+npm run dev:backend
 npm run build
-npm run preview
 npm run lint
+npm run frontend:preview
+npm run backend:start
 ```
 
-## Flujo de trabajo recomendado (frontend-first)
+Tambien se pueden ejecutar scripts directamente desde cada carpeta:
+
+```bash
+cd frontend
+npm run dev
+
+cd ../backend
+npm run dev
+```
+
+## API inicial
+
+Variables disponibles en `backend/.env.example`:
+
+```bash
+PORT=4000
+HOST=localhost
+NODE_ENV=development
+API_PREFIX=/api
+```
+
+Endpoint de salud:
+
+```bash
+GET http://localhost:4000/api/health
+```
+
+## Flujo de trabajo recomendado
 
 1. Definir rutas y layouts base por rol.
 2. Implementar pantallas base de navegacion.
 3. Consolidar mocks y contratos de datos de frontend.
 4. Implementar modulos de ventas y mis ventas.
 5. Integrar CRUDs administrativos.
-6. Preparar capa de servicios para futura integracion con backend real.
+6. Integrar endpoints de backend de forma incremental.
 
 ## Fuente del contexto funcional
 
