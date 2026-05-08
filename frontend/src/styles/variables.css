@@ -25,16 +25,16 @@
   --color-primary-hover: var(--color-gold-light);
   --color-primary-dark: var(--color-gold-dark);
 
-  --color-bg:           var(--color-dark);
-  --color-bg-card:      var(--color-dark-2);
-  --color-bg-input:     var(--color-dark-3);
-  --color-bg-hover:     var(--color-dark-4);
+  --color-bg:           #f7f8fa;
+  --color-bg-card:      #ffffff;
+  --color-bg-input:     #eef1f5;
+  --color-bg-hover:     #e2e7ee;
 
-  --color-text:         var(--color-white);
-  --color-text-muted:   var(--color-white-muted);
-  --color-text-soft:    var(--color-white-soft);
+  --color-text:         #111827;
+  --color-text-muted:   #6b7280;
+  --color-text-soft:    #374151;
 
-  --color-border:       #2e333d;
+  --color-border:       #d8dee8;
   --color-border-focus: var(--color-gold);
 
   /* --- ESTADOS --- */

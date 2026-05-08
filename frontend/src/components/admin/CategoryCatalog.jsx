@@ -1,75 +1,97 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ConfirmDialog from "../ui/ConfirmDialog";
 
 const EMPTY_FORM = { name: "" };
 
-export default function CategoryCatalog({ title, initialCategories }) {
-  const [categories, setCategories] = useState(
-    initialCategories.map((category) => ({
-      ...category,
-      status: category.status ?? "active",
-    })),
-  );
+export default function CategoryCatalog({ title, service }) {
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ query: "", status: "all" });
   const [confirm, setConfirm] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [requestError, setRequestError] = useState("");
 
-  const visibleCategories = useMemo(() => {
-    const query = filters.query.trim().toLowerCase();
+  const loadCategories = useCallback(
+    async (currentFilters = filters, options = {}) => {
+      if (!options.silent) setIsLoading(true);
+      setRequestError("");
 
-    return categories.filter((category) => {
-      const matchesQuery = !query || category.name.toLowerCase().includes(query);
-      const matchesStatus =
-        filters.status === "all" || category.status === filters.status;
+      const response = await service.list(currentFilters);
 
-      return matchesQuery && matchesStatus;
-    });
-  }, [categories, filters]);
+      if (!response.ok) {
+        setRequestError(response.message);
+      } else {
+        setCategories(
+          response.data.map((category) => ({
+            ...category,
+            status: category.status ?? "active",
+          })),
+        );
+      }
 
-  const nextId = () =>
-    categories.length > 0
-      ? Math.max(...categories.map((category) => category.id)) + 1
-      : 1;
+      if (!options.silent) setIsLoading(false);
+    },
+    [filters, service],
+  );
 
-  const validate = () => {
-    const trimmed = form.name.trim();
-    if (!trimmed) return "El nombre de la categoria es obligatorio.";
+  useEffect(() => {
+    let isActive = true;
 
-    const duplicate = categories.some(
-      (category) =>
-        category.name.toLowerCase() === trimmed.toLowerCase() &&
-        category.id !== editingId,
-    );
-    if (duplicate) return "Ya existe una categoria con ese nombre.";
+    async function fetchCategories() {
+      setIsLoading(true);
+      setRequestError("");
 
-    return "";
-  };
+      const response = await service.list(filters);
 
-  const handleSubmit = () => {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+      if (!isActive) return;
+
+      if (!response.ok) {
+        setRequestError(response.message);
+      } else {
+        setCategories(
+          response.data.map((category) => ({
+            ...category,
+            status: category.status ?? "active",
+          })),
+        );
+      }
+
+      setIsLoading(false);
+    }
+
+    fetchCategories();
+
+    return () => {
+      isActive = false;
+    };
+  }, [filters, service]);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) {
+      setError("El nombre de la categoria es obligatorio.");
       return;
     }
 
-    if (editingId === null) {
-      setCategories([
-        ...categories,
-        { id: nextId(), name: form.name.trim(), status: "active" },
-      ]);
-    } else {
-      setCategories(
-        categories.map((category) =>
-          category.id === editingId
-            ? { ...category, name: form.name.trim() }
-            : category,
-        ),
-      );
+    setIsSaving(true);
+    setRequestError("");
+
+    const response =
+      editingId === null
+        ? await service.create({ name: form.name })
+        : await service.update(editingId, { name: form.name });
+
+    setIsSaving(false);
+
+    if (!response.ok) {
+      setError(response.errors?.name ?? response.message);
+      return;
     }
 
     handleReset();
+    loadCategories(filters, { silent: true });
   };
 
   const handleEdit = (category) => {
@@ -84,19 +106,25 @@ export default function CategoryCatalog({ title, initialCategories }) {
     setError("");
   };
 
-  const applyStatusChange = () => {
+  const applyStatusChange = async () => {
     if (!confirm) return;
 
-    setCategories(
-      categories.map((category) =>
-        category.id === confirm.id
-          ? { ...category, status: confirm.nextStatus }
-          : category,
-      ),
-    );
+    setIsSaving(true);
+    setRequestError("");
+
+    const response = await service.setStatus(confirm.id, confirm.nextStatus);
+
+    setIsSaving(false);
+
+    if (!response.ok) {
+      setRequestError(response.message);
+      setConfirm(null);
+      return;
+    }
 
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
+    loadCategories(filters, { silent: true });
   };
 
   return (
@@ -122,7 +150,11 @@ export default function CategoryCatalog({ title, initialCategories }) {
             }}
           />
           <button className="button button-primary" type="button" onClick={handleSubmit}>
-            {editingId !== null ? "Guardar cambios" : "Agregar"}
+            {isSaving
+              ? "Guardando..."
+              : editingId !== null
+                ? "Guardar cambios"
+                : "Agregar"}
           </button>
           {editingId !== null && (
             <button className="button button-secondary" type="button" onClick={handleReset}>
@@ -131,6 +163,7 @@ export default function CategoryCatalog({ title, initialCategories }) {
           )}
         </div>
         {error && <p className="form-error">{error}</p>}
+        {requestError && <p className="form-error">{requestError}</p>}
       </section>
 
       <section className="panel">
@@ -157,7 +190,16 @@ export default function CategoryCatalog({ title, initialCategories }) {
           </select>
         </div>
 
-        {visibleCategories.length === 0 ? (
+        {isLoading ? (
+          <p className="empty-text">Cargando categorias...</p>
+        ) : requestError ? (
+          <div>
+            <p className="form-error">{requestError}</p>
+            <button className="button button-secondary" type="button" onClick={() => loadCategories()}>
+              Reintentar
+            </button>
+          </div>
+        ) : categories.length === 0 ? (
           <p className="empty-text">No hay categorias con esos filtros.</p>
         ) : (
           <div className="table-wrap">
@@ -171,7 +213,7 @@ export default function CategoryCatalog({ title, initialCategories }) {
                 </tr>
               </thead>
               <tbody>
-                {visibleCategories.map((category, index) => (
+                {categories.map((category, index) => (
                   <tr key={category.id} className={editingId === category.id ? "editing-row" : ""}>
                     <td>{index + 1}</td>
                     <td>{category.name}</td>
