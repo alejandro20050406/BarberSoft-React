@@ -41,8 +41,6 @@ export default function AppRouter() {
           <Route path={PATHS.adminSalesProduct} element={<div>Venta de Producto</div>} />
           <Route path={PATHS.adminSalesService} element={<div>Venta de Servicio</div>} />
           <Route path={PATHS.adminSalesList} element={<div>Lista de Ventas</div>} />
-          <Route path={PATHS.adminEmployees} element={<PendingPage title="Empleados" />} />
-          <Route path={PATHS.adminClients} element={<PendingPage title="Clientes" />} />
           <Route path={PATHS.adminReports} element={<div>Reportes</div>} />
 
           <Route path={PATHS.adminProducts} element={<ProductsPage />} />

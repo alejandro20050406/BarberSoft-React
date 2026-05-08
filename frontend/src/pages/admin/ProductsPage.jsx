@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import CatalogForm from "../../components/forms/CatalogForm";
+import FormField from "../../components/forms/FormField";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import { productCategoriesMock } from "../../mocks/productCategories.mock";
-import { productsMock } from "../../mocks/products.mock";
+import { productCategoriesService } from "../../services/categoryServices";
+import { productsService } from "../../services/productsService";
 
 const EMPTY_FORM = {
   category: "",
@@ -9,108 +11,114 @@ const EMPTY_FORM = {
   model: "",
   stock: "",
   minStock: "",
-  purchasePrice: "",
-  salePrice: "",
+  cost: "",
+  price: "",
 };
 
-const normalize = (value) => value.trim().toLowerCase();
-
 export default function ProductsPage() {
-  const [products, setProducts] = useState(
-    productsMock.map((product) => ({ ...product, status: product.status ?? "active" })),
-  );
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [errors, setErrors] = useState({});
   const [filters, setFilters] = useState({ query: "", category: "all", status: "all" });
   const [confirm, setConfirm] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const [formError, setFormError] = useState("");
 
-  const activeCategories = productCategoriesMock.filter(
-    (category) => category.status !== "inactive",
+  const loadProducts = useCallback(
+    async (currentFilters = filters, options = {}) => {
+      if (!options.silent) setIsLoading(true);
+      setRequestError("");
+
+      const response = await productsService.list(currentFilters);
+
+      if (!response.ok) {
+        setRequestError(response.message);
+      } else {
+        setProducts(response.data);
+      }
+
+      if (!options.silent) setIsLoading(false);
+    },
+    [filters],
   );
 
-  const visibleProducts = useMemo(() => {
-    const query = normalize(filters.query);
+  useEffect(() => {
+    let isActive = true;
 
-    return products.filter((product) => {
-      const matchesQuery =
-        !query ||
-        normalize(product.brand).includes(query) ||
-        normalize(product.model).includes(query);
-      const matchesCategory =
-        filters.category === "all" || product.category === filters.category;
-      const matchesStatus =
-        filters.status === "all" || product.status === filters.status;
+    async function fetchProducts() {
+      setIsLoading(true);
+      setRequestError("");
 
-      return matchesQuery && matchesCategory && matchesStatus;
-    });
-  }, [filters, products]);
+      const response = await productsService.list(filters);
 
-  const nextId = () =>
-    products.length > 0 ? Math.max(...products.map((product) => product.id)) + 1 : 1;
+      if (!isActive) return;
 
-  const validate = () => {
-    const fieldErrors = {};
-    const nameExists = products.some(
-      (product) =>
-        product.id !== editingId &&
-        normalize(`${product.brand} ${product.model}`) ===
-          normalize(`${form.brand} ${form.model}`),
-    );
+      if (!response.ok) {
+        setRequestError(response.message);
+      } else {
+        setProducts(response.data);
+      }
 
-    if (!form.category.trim()) fieldErrors.category = "Seleccione una categoria.";
-    if (!form.brand.trim()) fieldErrors.brand = "La marca es obligatoria.";
-    if (!form.model.trim()) fieldErrors.model = "El modelo es obligatorio.";
-    if (nameExists) fieldErrors.model = "Ya existe un producto con esa marca y modelo.";
-    if (form.stock === "" || Number(form.stock) < 0) fieldErrors.stock = "Ingrese stock valido.";
-    if (form.minStock === "" || Number(form.minStock) < 0) {
-      fieldErrors.minStock = "Ingrese stock minimo valido.";
-    }
-    if (form.purchasePrice === "" || Number(form.purchasePrice) <= 0) {
-      fieldErrors.purchasePrice = "Ingrese precio de compra valido.";
-    }
-    if (form.salePrice === "" || Number(form.salePrice) <= 0) {
-      fieldErrors.salePrice = "Ingrese precio de venta valido.";
+      setIsLoading(false);
     }
 
-    return fieldErrors;
-  };
+    fetchProducts();
+
+    return () => {
+      isActive = false;
+    };
+  }, [filters]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchCategories() {
+      const response = await productCategoriesService.list({ status: "all" });
+
+      if (!isActive || !response.ok) return;
+
+      setCategories(response.data);
+    }
+
+    fetchCategories();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const activeCategories = categories.filter((category) => category.status !== "inactive");
 
   const handleChange = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+    setFormError("");
   };
 
-  const handleSubmit = () => {
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+  const handleSubmit = async () => {
+    setIsSaving(true);
+    setFormError("");
+
+    const response =
+      editingId === null
+        ? await productsService.create(form)
+        : await productsService.update(editingId, form);
+
+    setIsSaving(false);
+
+    if (!response.ok) {
+      setErrors(response.errors ?? {});
+      setFormError(response.message);
       return;
     }
 
-    const parsedProduct = {
-      category: form.category.trim(),
-      brand: form.brand.trim(),
-      model: form.model.trim(),
-      stock: Number(form.stock),
-      minStock: Number(form.minStock),
-      purchasePrice: Number(form.purchasePrice),
-      salePrice: Number(form.salePrice),
-      status: "active",
-    };
-
-    if (editingId === null) {
-      setProducts([...products, { id: nextId(), ...parsedProduct }]);
-    } else {
-      setProducts(
-        products.map((product) =>
-          product.id === editingId ? { ...product, ...parsedProduct } : product,
-        ),
-      );
-    }
-
     handleReset();
+    loadProducts(filters, { silent: true });
   };
 
   const handleEdit = (product) => {
@@ -121,10 +129,11 @@ export default function ProductsPage() {
       model: product.model,
       stock: String(product.stock),
       minStock: String(product.minStock),
-      purchasePrice: String(product.purchasePrice),
-      salePrice: String(product.salePrice),
+      cost: String(product.cost),
+      price: String(product.price),
     });
     setErrors({});
+    setFormError("");
     setShowForm(true);
   };
 
@@ -132,19 +141,29 @@ export default function ProductsPage() {
     setForm(EMPTY_FORM);
     setEditingId(null);
     setErrors({});
+    setFormError("");
     setShowForm(false);
   };
 
-  const applyStatusChange = () => {
+  const applyStatusChange = async () => {
     if (!confirm) return;
 
-    setProducts(
-      products.map((product) =>
-        product.id === confirm.id ? { ...product, status: confirm.nextStatus } : product,
-      ),
-    );
+    setIsSaving(true);
+    setRequestError("");
+
+    const response = await productsService.setStatus(confirm.id, confirm.nextStatus);
+
+    setIsSaving(false);
+
+    if (!response.ok) {
+      setRequestError(response.message);
+      setConfirm(null);
+      return;
+    }
+
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
+    loadProducts(filters, { silent: true });
   };
 
   return (
@@ -162,45 +181,45 @@ export default function ProductsPage() {
       </div>
 
       {showForm && (
-        <section className="panel">
-          <h2>{editingId !== null ? "Editar producto" : "Nuevo producto"}</h2>
-          <div className="form-grid">
-            <Field label="Categoria" error={errors.category}>
-              <select className="field" value={form.category} onChange={(event) => handleChange("category", event.target.value)}>
-                <option value="">Seleccionar</option>
-                {activeCategories.map((category) => (
-                  <option key={category.id} value={category.name}>{category.name}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Marca" error={errors.brand}>
-              <input className="field" value={form.brand} onChange={(event) => handleChange("brand", event.target.value)} />
-            </Field>
-            <Field label="Modelo" error={errors.model}>
-              <input className="field" value={form.model} onChange={(event) => handleChange("model", event.target.value)} />
-            </Field>
-            <Field label="Stock" error={errors.stock}>
-              <input className="field" type="number" min="0" value={form.stock} onChange={(event) => handleChange("stock", event.target.value)} />
-            </Field>
-            <Field label="Stock minimo" error={errors.minStock}>
-              <input className="field" type="number" min="0" value={form.minStock} onChange={(event) => handleChange("minStock", event.target.value)} />
-            </Field>
-            <Field label="Precio compra" error={errors.purchasePrice}>
-              <input className="field" type="number" min="0" value={form.purchasePrice} onChange={(event) => handleChange("purchasePrice", event.target.value)} />
-            </Field>
-            <Field label="Precio venta" error={errors.salePrice}>
-              <input className="field" type="number" min="0" value={form.salePrice} onChange={(event) => handleChange("salePrice", event.target.value)} />
-            </Field>
-          </div>
-          <div className="form-actions">
-            <button className="button button-primary" type="button" onClick={handleSubmit}>
-              {editingId !== null ? "Guardar cambios" : "Agregar producto"}
-            </button>
-            <button className="button button-secondary" type="button" onClick={handleReset}>
-              Cancelar
-            </button>
-          </div>
-        </section>
+        <CatalogForm
+          title={editingId !== null ? "Editar producto" : "Nuevo producto"}
+          errorMessage={formError}
+          primaryLabel={editingId !== null ? "Guardar cambios" : "Agregar producto"}
+          isSaving={isSaving}
+          onSubmit={handleSubmit}
+          onCancel={handleReset}
+        >
+          <FormField label="Categoria" error={errors.category}>
+            <select
+              className="field"
+              value={form.category}
+              onChange={(event) => handleChange("category", event.target.value)}
+            >
+              <option value="">Seleccionar</option>
+              {activeCategories.map((category) => (
+                <option key={category.id} value={category.name}>{category.name}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Marca" error={errors.brand}>
+            <input className="field" value={form.brand} onChange={(event) => handleChange("brand", event.target.value)} />
+          </FormField>
+          <FormField label="Modelo" error={errors.model}>
+            <input className="field" value={form.model} onChange={(event) => handleChange("model", event.target.value)} />
+          </FormField>
+          <FormField label="Stock actual" error={errors.stock}>
+            <input className="field" type="number" min="0" value={form.stock} onChange={(event) => handleChange("stock", event.target.value)} />
+          </FormField>
+          <FormField label="Stock minimo" error={errors.minStock}>
+            <input className="field" type="number" min="0" value={form.minStock} onChange={(event) => handleChange("minStock", event.target.value)} />
+          </FormField>
+          <FormField label="Costo" error={errors.cost}>
+            <input className="field" type="number" min="0" step="0.01" value={form.cost} onChange={(event) => handleChange("cost", event.target.value)} />
+          </FormField>
+          <FormField label="Precio" error={errors.price}>
+            <input className="field" type="number" min="0" step="0.01" value={form.price} onChange={(event) => handleChange("price", event.target.value)} />
+          </FormField>
+        </CatalogForm>
       )}
 
       <section className="panel">
@@ -208,7 +227,7 @@ export default function ProductsPage() {
           <input className="field" type="search" placeholder="Buscar marca o modelo" value={filters.query} onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} />
           <select className="field select-field" value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}>
             <option value="all">Todas las categorias</option>
-            {productCategoriesMock.map((category) => (
+            {categories.map((category) => (
               <option key={category.id} value={category.name}>{category.name}</option>
             ))}
           </select>
@@ -219,7 +238,16 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        {visibleProducts.length === 0 ? (
+        {isLoading ? (
+          <p className="empty-text">Cargando productos...</p>
+        ) : requestError ? (
+          <div>
+            <p className="form-error">{requestError}</p>
+            <button className="button button-secondary" type="button" onClick={() => loadProducts()}>
+              Reintentar
+            </button>
+          </div>
+        ) : products.length === 0 ? (
           <p className="empty-text">No hay productos con esos filtros.</p>
         ) : (
           <div className="table-wrap">
@@ -231,22 +259,22 @@ export default function ProductsPage() {
                   <th>Modelo</th>
                   <th>Stock</th>
                   <th>Min.</th>
-                  <th>P. compra</th>
-                  <th>P. venta</th>
+                  <th>Costo</th>
+                  <th>Precio</th>
                   <th>Estado</th>
                   <th className="actions-cell">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleProducts.map((product) => (
+                {products.map((product) => (
                   <tr key={product.id} className={editingId === product.id ? "editing-row" : ""}>
                     <td>{product.category}</td>
                     <td>{product.brand}</td>
                     <td>{product.model}</td>
                     <td className={product.stock <= product.minStock ? "danger-text" : ""}>{product.stock}</td>
                     <td>{product.minStock}</td>
-                    <td>${product.purchasePrice.toFixed(2)}</td>
-                    <td>${product.salePrice.toFixed(2)}</td>
+                    <td>${product.cost.toFixed(2)}</td>
+                    <td>${product.price.toFixed(2)}</td>
                     <td><span className={`status-pill ${product.status}`}>{product.status === "active" ? "Activo" : "Inactivo"}</span></td>
                     <td className="actions-cell">
                       <button className="link-button" type="button" onClick={() => handleEdit(product)}>Editar</button>
@@ -275,15 +303,5 @@ export default function ProductsPage() {
         onConfirm={applyStatusChange}
       />
     </div>
-  );
-}
-
-function Field({ label, error, children }) {
-  return (
-    <label className="field-group">
-      <span>{label}</span>
-      {children}
-      {error && <small>{error}</small>}
-    </label>
   );
 }
