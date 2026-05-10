@@ -1,21 +1,11 @@
 import styles from './Table.module.css';
 
-/**
- * Table — componente reutilizable de BarberSoft
- *
- * Props:
- * - columns: [{ key, label, align? }]  — definición de columnas
- * - data:    [{ ...campos }]            — arreglo de filas
- * - actions: (row) => ReactNode        — columna opcional de acciones
- * - loading: boolean                   — muestra skeleton
- * - emptyMessage: string               — mensaje cuando no hay datos
- */
-
 const Table = ({
   columns = [],
   data = [],
   actions,
   loading = false,
+  getRowClassName,
   emptyMessage = 'No hay registros para mostrar',
 }) => {
   if (loading) {
@@ -29,22 +19,22 @@ const Table = ({
                   {col.label}
                 </th>
               ))}
-              {actions && <th className={styles.th}>Acciones</th>}
+              {actions ? <th className={styles.th}>Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className={styles.tr}>
+            {Array.from({ length: 5 }).map((_, rowIndex) => (
+              <tr key={rowIndex} className={styles.tr}>
                 {columns.map((col) => (
                   <td key={col.key} className={styles.td}>
                     <span className={styles.skeleton} />
                   </td>
                 ))}
-                {actions && (
+                {actions ? (
                   <td className={styles.td}>
                     <span className={styles.skeleton} />
                   </td>
-                )}
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -64,12 +54,14 @@ const Table = ({
                   {col.label}
                 </th>
               ))}
-              {actions && <th className={styles.th}>Acciones</th>}
+              {actions ? <th className={styles.th}>Acciones</th> : null}
             </tr>
           </thead>
         </table>
         <div className={styles.empty}>
-          <span className={styles.emptyIcon}>📋</span>
+          <span className={styles.emptyIcon} aria-hidden="true">
+            ::
+          </span>
           <p className={styles.emptyText}>{emptyMessage}</p>
         </div>
       </div>
@@ -90,26 +82,27 @@ const Table = ({
                 {col.label}
               </th>
             ))}
-            {actions && <th className={`${styles.th} ${styles.thActions}`}>Acciones</th>}
+            {actions ? <th className={`${styles.th} ${styles.thActions}`}>Acciones</th> : null}
           </tr>
         </thead>
         <tbody>
           {data.map((row, rowIndex) => (
-            <tr key={row.id ?? rowIndex} className={styles.tr}>
+            <tr
+              key={row.id ?? rowIndex}
+              className={`${styles.tr} ${getRowClassName ? getRowClassName(row, rowIndex) : ''}`.trim()}
+            >
               {columns.map((col) => (
                 <td
                   key={col.key}
                   className={styles.td}
                   style={{ textAlign: col.align || 'left' }}
                 >
-                  {row[col.key] ?? '—'}
+                  {typeof col.render === 'function' ? col.render(row, rowIndex) : (row[col.key] ?? '-')}
                 </td>
               ))}
-              {actions && (
-                <td className={`${styles.td} ${styles.tdActions}`}>
-                  {actions(row)}
-                </td>
-              )}
+              {actions ? (
+                <td className={`${styles.td} ${styles.tdActions}`}>{actions(row)}</td>
+              ) : null}
             </tr>
           ))}
         </tbody>
