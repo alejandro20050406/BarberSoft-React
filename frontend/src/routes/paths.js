@@ -15,10 +15,12 @@ export const PATHS = {
   adminProductCategories: "/admin/categorias-productos",
   adminServiceCategories: "/admin/categorias-servicios",
   adminReports: "/admin/reportes",
+  adminProfile: "/admin/perfil",
 
   employee: "/empleado",
   employeeSalesProduct: "/empleado/ventas/producto",
   employeeSalesService: "/empleado/ventas/servicio",
   employeeMySales: "/empleado/mis-ventas",
   employeeCashClosing: "/empleado/corte-caja",
+  employeeProfile: "/empleado/perfil",
 };

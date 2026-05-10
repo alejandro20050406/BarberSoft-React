@@ -11,6 +11,7 @@ export const adminMenu = [
   { label: "Empleados", path: PATHS.adminEmployees },
   { label: "Clientes", path: PATHS.adminClients },
   { label: "Reportes", path: PATHS.adminReports },
+  { label: "Perfil", path: PATHS.adminProfile },
 ];
 
 export const employeeMenu = [
@@ -19,4 +20,5 @@ export const employeeMenu = [
   { label: "Venta Servicio", path: PATHS.employeeSalesService },
   { label: "Mis Ventas", path: PATHS.employeeMySales },
   { label: "Corte de Caja", path: PATHS.employeeCashClosing },
+  { label: "Perfil", path: PATHS.employeeProfile },
 ];
