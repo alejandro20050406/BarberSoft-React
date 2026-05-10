@@ -20,6 +20,7 @@ import styles from './Input.module.css';
 const Input = ({
   label,
   name,
+  as = 'input',
   type = 'text',
   value,
   onChange,
@@ -29,28 +30,54 @@ const Input = ({
   disabled = false,
   required = false,
   fullWidth = true,
+  ...props
 }) => {
+  const Component = as;
+  const isTextarea = as === 'textarea';
+  const isSelect = as === 'select';
+
+  const controlClassName = [
+    styles.control,
+    isTextarea ? styles.textarea : '',
+    isSelect ? styles.select : '',
+    error ? styles.invalid : '',
+    disabled ? styles.disabled : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className={`${styles.wrapper} ${fullWidth ? styles.fullWidth : ''}`}>
       {label && (
-        <label htmlFor={name} className={styles.label}>
-          {label}
-          {required && <span className={styles.required}>*</span>}
-        </label>
+        <div className={styles.labelRow}>
+          <label htmlFor={name} className={styles.label}>
+            {label}
+            {required && <span className={styles.required}>*</span>}
+          </label>
+          {hint && !error ? <span className={styles.hintTag}>{hint}</span> : null}
+        </div>
       )}
-      <input
+
+      <Component
         id={name}
         name={name}
-        type={type}
+        type={isTextarea || isSelect ? undefined : type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
         required={required}
-        className={`${styles.input} ${error ? styles.inputError : ''}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${name}-error` : undefined}
+        className={controlClassName}
+        {...props}
       />
-      {error && <span className={styles.error}>{error}</span>}
-      {hint && !error && <span className={styles.hint}>{hint}</span>}
+
+      {error ? (
+        <span id={`${name}-error`} className={`${styles.message} ${styles.error}`}>
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 };

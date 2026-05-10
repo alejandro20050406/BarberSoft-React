@@ -1,10 +1,243 @@
-const EmployeesPage = () => {
-  return (
-    <section className="dashboard-page">
-      <h1>Empleados</h1>
-      <p>Modulo administrativo preparado para la gestion de empleados.</p>
-    </section>
-  );
+import { useMemo, useState } from "react";
+import FormField from "../../components/forms/FormField";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { employeesService } from "../../services/employeesService";
+
+const EMPTY_FORM = {
+  firstName: "",
+  lastName: "",
+  phone: "",
+  email: "",
+  status: "active",
+  joinDate: "",
+  username: "",
+  password: "",
 };
 
-export default EmployeesPage;
+const STATUS_LABELS = {
+  active: "ACTIVO",
+  inactive: "INACTIVO",
+};
+
+export default function EmployeesPage() {
+  const [filters, setFilters] = useState({ query: "", status: "all" });
+  const [employees, setEmployees] = useState(() => employeesService.list(filters).data);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [apiMessage, setApiMessage] = useState("");
+  const [confirm, setConfirm] = useState(null);
+
+  const visibleEmployees = useMemo(() => {
+    const response = employeesService.list(filters);
+    return response.ok ? response.data : employees;
+  }, [filters, employees]);
+
+  const refreshEmployees = () => {
+    const response = employeesService.list({ query: "", status: "all" });
+    if (response.ok) setEmployees(response.data);
+  };
+
+  const handleChange = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
+    setApiMessage("");
+  };
+
+  const handleSubmit = () => {
+    const response =
+      editingId === null
+        ? employeesService.create(form)
+        : employeesService.update(editingId, form);
+
+    if (!response.ok) {
+      setErrors(response.errors ?? {});
+      setApiMessage(response.message);
+      return;
+    }
+
+    refreshEmployees();
+    handleReset();
+  };
+
+  const handleEdit = (employee) => {
+    setEditingId(employee.id);
+    setForm({
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      phone: employee.phone,
+      email: employee.email,
+      status: employee.status,
+      joinDate: employee.joinDate,
+      username: employee.username,
+      password: employee.password,
+    });
+    setErrors({});
+    setApiMessage("");
+    setShowForm(true);
+  };
+
+  const handleReset = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setErrors({});
+    setApiMessage("");
+    setShowForm(false);
+  };
+
+  const applyStatusChange = () => {
+    if (!confirm) return;
+
+    const response = employeesService.setStatus(confirm.id, confirm.nextStatus);
+    if (!response.ok) {
+      setApiMessage(response.message);
+      setConfirm(null);
+      return;
+    }
+
+    refreshEmployees();
+    if (editingId === confirm.id) handleReset();
+    setConfirm(null);
+  };
+
+  return (
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <span className="eyebrow">Administracion</span>
+          <h1>Empleados</h1>
+        </div>
+        {!showForm && (
+          <button className="button button-primary" type="button" onClick={() => setShowForm(true)}>
+            Nuevo empleado
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <section className="panel">
+          <h2>{editingId !== null ? "Editar empleado" : "Datos Personales"}</h2>
+          <div className="form-grid">
+            <FormField label="Nombre" error={errors.firstName}>
+              <input className="field" value={form.firstName} onChange={(event) => handleChange("firstName", event.target.value)} />
+            </FormField>
+            <FormField label="Apellido" error={errors.lastName}>
+              <input className="field" value={form.lastName} onChange={(event) => handleChange("lastName", event.target.value)} />
+            </FormField>
+            <FormField label="Telefono" error={errors.phone}>
+              <input className="field" value={form.phone} placeholder="3121234567" onChange={(event) => handleChange("phone", event.target.value)} />
+            </FormField>
+            <FormField label="Correo electronico" error={errors.email}>
+              <input className="field" type="email" value={form.email} onChange={(event) => handleChange("email", event.target.value)} />
+            </FormField>
+          </div>
+
+          <hr className="divider" />
+
+          <h2>Datos Laborales</h2>
+          <div className="form-grid">
+            <FormField label="Estado" error={errors.status}>
+              <select className="field" value={form.status} onChange={(event) => handleChange("status", event.target.value)}>
+                <option value="active">ACTIVO</option>
+                <option value="inactive">INACTIVO</option>
+              </select>
+            </FormField>
+            <FormField label="Fecha de ingreso" error={errors.joinDate}>
+              <input className="field" type="date" value={form.joinDate} onChange={(event) => handleChange("joinDate", event.target.value)} />
+            </FormField>
+          </div>
+
+          <hr className="divider" />
+
+          <h2>Cuenta de acceso</h2>
+          <div className="form-grid">
+            <FormField label="Usuario" error={errors.username}>
+              <input className="field" value={form.username} onChange={(event) => handleChange("username", event.target.value)} />
+            </FormField>
+            <FormField label="Contrasena" error={errors.password}>
+              <input className="field" type="password" value={form.password} onChange={(event) => handleChange("password", event.target.value)} />
+            </FormField>
+          </div>
+
+          {apiMessage ? <p className="form-error">{apiMessage}</p> : null}
+
+          <div className="form-actions">
+            <button className="button button-secondary" type="button" onClick={handleReset}>
+              Cancelar
+            </button>
+            <button className="button button-primary" type="button" onClick={handleSubmit}>
+              Guardar
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="panel">
+        <div className="toolbar">
+          <input className="field" type="search" placeholder="Buscar empleado, usuario o correo" value={filters.query} onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} />
+          <select className="field select-field" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+            <option value="all">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+          </select>
+        </div>
+
+        {visibleEmployees.length === 0 ? (
+          <p className="empty-text">No hay empleados con esos filtros.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Usuario</th>
+                  <th>Telefono</th>
+                  <th>Correo</th>
+                  <th>Fecha de ingreso</th>
+                  <th>Estado</th>
+                  <th className="actions-cell">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleEmployees.map((employee) => {
+                  const fullName = `${employee.firstName} ${employee.lastName}`.trim();
+
+                  return (
+                    <tr key={employee.id} className={editingId === employee.id ? "editing-row" : ""}>
+                      <td>{fullName}</td>
+                      <td>{employee.username}</td>
+                      <td>{employee.phone}</td>
+                      <td>{employee.email}</td>
+                      <td>{employee.joinDate}</td>
+                      <td><span className={`status-pill ${employee.status}`}>{STATUS_LABELS[employee.status] ?? employee.status}</span></td>
+                      <td className="actions-cell">
+                        <button className="link-button" type="button" onClick={() => handleEdit(employee)}>Editar</button>
+                        <button className="link-button danger" type="button" onClick={() => setConfirm({
+                          id: employee.id,
+                          name: fullName,
+                          nextStatus: employee.status === "active" ? "inactive" : "active",
+                        })}>
+                          {employee.status === "active" ? "Desactivar" : "Activar"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <ConfirmDialog
+        isOpen={Boolean(confirm)}
+        title="Confirmar cambio"
+        message={`Se cambiara el estado de "${confirm?.name}".`}
+        confirmLabel="Si, continuar"
+        onCancel={() => setConfirm(null)}
+        onConfirm={applyStatusChange}
+      />
+    </div>
+  );
+}
