@@ -55,7 +55,7 @@
 
 .control:focus-visible {
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 4px rgba(201, 168, 76, 0.18);
+  box-shadow: var(--shadow-gold);
 }
 
 .textarea {
