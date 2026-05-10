@@ -5,24 +5,24 @@ const employeesSeed = [
   {
     id: 1,
     name: "Juan Perez",
-    username: "juan",
+    username: "juan01",
+    password: "perez123",
     phone: "555-443-2211",
-    role: "Barbero",
-    commissionRate: 40,
     hireDate: "2026-01-15",
     status: "active",
   },
   {
     id: 2,
     name: "Luis Medina",
-    username: "luis",
+    username: "luis02",
+    password: "medina123",
     phone: "555-901-2020",
-    role: "Barbero senior",
-    commissionRate: 45,
     hireDate: "2025-10-02",
     status: "active",
   },
 ];
+
+const ACCESS_VALUE_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/;
 
 function makeError(message, errors = {}, status = 400) {
   return { ok: false, status, message, errors };
@@ -38,18 +38,20 @@ function validateEmployee(payload, employees, currentId = null) {
   const errors = {};
   const name = payload.name?.trim() ?? "";
   const username = payload.username?.trim() ?? "";
+  const password = payload.password?.trim() ?? "";
   const phone = payload.phone?.trim() ?? "";
-  const role = payload.role?.trim() ?? "";
-  const commissionRate = Number(payload.commissionRate);
   const hireDate = payload.hireDate?.trim() ?? "";
 
   if (!name) errors.name = "El nombre del empleado es obligatorio.";
   if (!username) errors.username = "El usuario es obligatorio.";
-  if (!phone) errors.phone = "El telefono es obligatorio.";
-  if (!role) errors.role = "El puesto es obligatorio.";
-  if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 100) {
-    errors.commissionRate = "Ingrese una comision entre 0 y 100.";
+  if (username && (username.length < 4 || username.length > 20 || !ACCESS_VALUE_PATTERN.test(username))) {
+    errors.username = "El usuario debe tener de 4 a 20 caracteres, solo letras y numeros, e incluir ambos.";
   }
+  if (!password) errors.password = "La contrasena es obligatoria.";
+  if (password && (password.length < 6 || !ACCESS_VALUE_PATTERN.test(password))) {
+    errors.password = "La contrasena debe tener minimo 6 caracteres, solo letras y numeros, e incluir ambos.";
+  }
+  if (!phone) errors.phone = "El telefono es obligatorio.";
   if (!validateDate(hireDate)) {
     errors.hireDate = "Ingrese una fecha de ingreso valida.";
   }
@@ -71,9 +73,8 @@ function buildEmployee(payload, currentEmployee = {}) {
     ...currentEmployee,
     name: payload.name.trim(),
     username: payload.username.trim(),
+    password: payload.password.trim(),
     phone: payload.phone.trim(),
-    role: payload.role.trim(),
-    commissionRate: Number(payload.commissionRate),
     hireDate: payload.hireDate.trim(),
     status: VALID_STATUSES.has(payload.status)
       ? payload.status
@@ -96,7 +97,7 @@ function createEmployeeStore(seed) {
           !query ||
           normalize(employee.name).includes(query) ||
           normalize(employee.username).includes(query) ||
-          normalize(employee.role).includes(query);
+          normalize(employee.phone).includes(query);
         const matchesStatus = status === "all" || employee.status === status;
 
         return matchesQuery && matchesStatus;

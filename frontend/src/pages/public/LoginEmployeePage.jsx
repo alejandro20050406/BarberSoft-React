@@ -1,27 +1,56 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usersMock } from "../../mocks/users.mock";
 import { PATHS } from "../../routes/paths";
+import { employeesService } from "../../services/employeesService";
+
+const EMPLOYEE_PERMISSIONS = [
+  "dashboard:read",
+  "sales:create",
+  "sales:own:read",
+  "cash:close",
+];
 
 const LoginEmployeePage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    const user = usersMock.find(
+  const handleLogin = async () => {
+    setIsLoading(true);
+    setError("");
+
+    const response = await employeesService.list({ query: username.trim(), status: "active" });
+
+    setIsLoading(false);
+
+    if (!response.ok) {
+      setError(response.message);
+      return;
+    }
+
+    const employee = response.data.find(
       (candidate) =>
-        candidate.username === username &&
-        candidate.password === password &&
-        candidate.role === "employee" &&
+        candidate.username === username.trim() &&
+        candidate.password === password.trim() &&
         candidate.status === "active",
     );
 
-    if (!user) {
+    if (!employee) {
       setError("Credenciales incorrectas o acceso de empleado inactivo.");
       return;
     }
+
+    const user = {
+      id: employee.id,
+      username: employee.username,
+      password: employee.password,
+      role: "employee",
+      name: employee.name,
+      status: employee.status,
+      permissions: EMPLOYEE_PERMISSIONS,
+    };
 
     localStorage.setItem("user", JSON.stringify(user));
     navigate(PATHS.employee);
@@ -39,8 +68,8 @@ const LoginEmployeePage = () => {
 
         {error && <p className="form-error">{error}</p>}
 
-        <button className="button button-primary" type="button" onClick={handleLogin}>
-          Ingresar
+        <button className="button button-primary" type="button" onClick={handleLogin} disabled={isLoading}>
+          {isLoading ? "Ingresando..." : "Ingresar"}
         </button>
       </section>
     </div>

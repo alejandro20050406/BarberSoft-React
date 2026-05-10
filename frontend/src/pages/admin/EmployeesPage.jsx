@@ -7,9 +7,8 @@ import { employeesService } from "../../services/employeesService";
 const EMPTY_FORM = {
   name: "",
   username: "",
+  password: "",
   phone: "",
-  role: "",
-  commissionRate: "",
   hireDate: "",
 };
 
@@ -103,9 +102,8 @@ export default function EmployeesPage() {
     setForm({
       name: employee.name,
       username: employee.username,
+      password: employee.password ?? "",
       phone: employee.phone,
-      role: employee.role,
-      commissionRate: String(employee.commissionRate),
       hireDate: employee.hireDate,
     });
     setErrors({});
@@ -169,16 +167,33 @@ export default function EmployeesPage() {
             <input className="field" value={form.name} onChange={(event) => handleChange("name", event.target.value)} />
           </FormField>
           <FormField label="Usuario" error={errors.username}>
-            <input className="field" value={form.username} onChange={(event) => handleChange("username", event.target.value)} />
+            <input
+              className="field"
+              name="employee-access-username"
+              value={form.username}
+              minLength={4}
+              maxLength={20}
+              pattern="[A-Za-z0-9]+"
+              placeholder="juan01"
+              autoComplete="new-password"
+              onChange={(event) => handleChange("username", event.target.value)}
+            />
+          </FormField>
+          <FormField label="Contrasena" error={errors.password}>
+            <input
+              className="field"
+              name="employee-access-password"
+              type="password"
+              value={form.password}
+              minLength={6}
+              pattern="[A-Za-z0-9]+"
+              placeholder="Minimo 6 caracteres"
+              autoComplete="new-password"
+              onChange={(event) => handleChange("password", event.target.value)}
+            />
           </FormField>
           <FormField label="Telefono" error={errors.phone}>
             <input className="field" value={form.phone} onChange={(event) => handleChange("phone", event.target.value)} />
-          </FormField>
-          <FormField label="Puesto" error={errors.role}>
-            <input className="field" value={form.role} onChange={(event) => handleChange("role", event.target.value)} />
-          </FormField>
-          <FormField label="Comision (%)" error={errors.commissionRate}>
-            <input className="field" type="number" min="0" max="100" step="1" value={form.commissionRate} onChange={(event) => handleChange("commissionRate", event.target.value)} />
           </FormField>
           <FormField label="Fecha de ingreso" error={errors.hireDate}>
             <input className="field" type="date" value={form.hireDate} onChange={(event) => handleChange("hireDate", event.target.value)} />
@@ -191,7 +206,7 @@ export default function EmployeesPage() {
           <input
             className="field"
             type="search"
-            placeholder="Buscar nombre, usuario o puesto"
+            placeholder="Buscar nombre, usuario o telefono"
             value={filters.query}
             onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
           />
@@ -221,8 +236,6 @@ export default function EmployeesPage() {
                   <th>Nombre</th>
                   <th>Usuario</th>
                   <th>Telefono</th>
-                  <th>Puesto</th>
-                  <th>Comision</th>
                   <th>Ingreso</th>
                   <th>Estado</th>
                   <th className="actions-cell">Acciones</th>
@@ -234,8 +247,6 @@ export default function EmployeesPage() {
                     <td>{employee.name}</td>
                     <td>{employee.username}</td>
                     <td>{employee.phone}</td>
-                    <td>{employee.role}</td>
-                    <td>{employee.commissionRate}%</td>
                     <td>{employee.hireDate}</td>
                     <td><span className={`status-pill ${employee.status}`}>{employee.status === "active" ? "Activo" : "Inactivo"}</span></td>
                     <td className="actions-cell">
