@@ -8,6 +8,7 @@ export const API_ENDPOINTS = {
   users: "/api/users",
   roles: "/api/roles",
   services: "/api/services",
+  sales: "/api/sales",
   products: "/api/products",
   productCategories: "/api/product-categories",
   serviceCategories: "/api/service-categories",

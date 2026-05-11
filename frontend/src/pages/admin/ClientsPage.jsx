@@ -1,35 +1,36 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import CatalogForm from "../../components/forms/CatalogForm";
 import FormField from "../../components/forms/FormField";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useClients } from "../../hooks/useClients";
 
 const EMPTY_FORM = {
-  name: "",
+  firstName: "",
+  lastName: "",
   phone: "",
   email: "",
   notes: "",
 };
 
 export default function ClientsPage() {
-  const [filters, setFilters] = useState({ query: "", status: "all" });
-  const [clients, setClients] = useState(() => clientsService.list(filters).data);
+  const {
+    clients,
+    filters,
+    setFilters,
+    isLoading,
+    isSaving,
+    requestError,
+    loadClients,
+    createClient,
+    updateClient,
+    setClientStatus,
+  } = useClients();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [errors, setErrors] = useState({});
-  const [filters, setFilters] = useState({ query: "", status: "all" });
+  const [formError, setFormError] = useState("");
   const [confirm, setConfirm] = useState(null);
-
-  const visibleClients = useMemo(() => {
-    const response = clientsService.list(filters);
-    return response.ok ? response.data : clients;
-  }, [filters, clients]);
-
-  const refreshClients = () => {
-    const response = clientsService.list({ query: "", status: "all" });
-    if (response.ok) setClients(response.data);
-  };
 
   const handleChange = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -37,11 +38,11 @@ export default function ClientsPage() {
     setFormError("");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const response =
       editingId === null
-        ? clientsService.create(form)
-        : clientsService.update(editingId, form);
+        ? await createClient(form)
+        : await updateClient(editingId, form);
 
     if (!response.ok) {
       setErrors(response.errors ?? {});
@@ -50,16 +51,16 @@ export default function ClientsPage() {
     }
 
     handleReset();
-    loadClients(filters, { silent: true });
   };
 
   const handleEdit = (client) => {
     setEditingId(client.id);
     setForm({
-      name: client.name,
+      firstName: client.firstName,
+      lastName: client.lastName,
       phone: client.phone,
       email: client.email,
-      notes: client.notes,
+      notes: client.notes ?? "",
     });
     setErrors({});
     setFormError("");
@@ -77,16 +78,15 @@ export default function ClientsPage() {
   const applyStatusChange = async () => {
     if (!confirm) return;
 
-    const response = clientsService.setStatus(confirm.id, confirm.nextStatus);
+    const response = await setClientStatus(confirm.id, confirm.nextStatus);
     if (!response.ok) {
-      setRequestError(response.message);
+      setFormError(response.message);
       setConfirm(null);
       return;
     }
 
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
-    loadClients(filters, { silent: true });
   };
 
   return (
@@ -105,14 +105,18 @@ export default function ClientsPage() {
 
       {showForm && (
         <CatalogForm
-          title={editingId !== null ? "Editar cliente" : "Crear Cliente"}
-          errorMessage={apiMessage}
+          title={editingId !== null ? "Editar cliente" : "Crear cliente"}
+          errorMessage={formError}
           primaryLabel={editingId !== null ? "Guardar cambios" : "Guardar"}
+          isSaving={isSaving}
           onSubmit={handleSubmit}
           onCancel={handleReset}
         >
-          <FormField label="Nombre" error={errors.name}>
-            <input className="field" value={form.name} onChange={(event) => handleChange("name", event.target.value)} />
+          <FormField label="Nombre" error={errors.firstName}>
+            <input className="field" value={form.firstName} onChange={(event) => handleChange("firstName", event.target.value)} />
+          </FormField>
+          <FormField label="Apellido" error={errors.lastName}>
+            <input className="field" value={form.lastName} onChange={(event) => handleChange("lastName", event.target.value)} />
           </FormField>
           <FormField label="Telefono" error={errors.phone}>
             <input className="field" value={form.phone} onChange={(event) => handleChange("phone", event.target.value)} />
@@ -120,7 +124,7 @@ export default function ClientsPage() {
           <FormField label="Correo" error={errors.email}>
             <input className="field" type="email" value={form.email} onChange={(event) => handleChange("email", event.target.value)} />
           </FormField>
-          <FormField label="Notas" error={errors.notes}>
+          <FormField label="Notas" error={errors.notes} fullWidth>
             <textarea className="field field-textarea" value={form.notes} onChange={(event) => handleChange("notes", event.target.value)} />
           </FormField>
         </CatalogForm>
@@ -167,20 +171,21 @@ export default function ClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleClients.map((client) => {
-                  const fullName = `${client.firstName} ${client.lastName}`.trim();
+                {clients.map((client) => {
+                  const name = `${client.firstName} ${client.lastName}`.trim();
 
                   return (
                     <tr key={client.id} className={editingId === client.id ? "editing-row" : ""}>
-                      <td>{fullName}</td>
+                      <td>{name}</td>
                       <td>{client.phone}</td>
                       <td>{client.email || "Sin correo"}</td>
+                      <td className="muted-text">{client.notes || "Sin notas"}</td>
                       <td><span className={`status-pill ${client.status}`}>{client.status === "active" ? "Activo" : "Inactivo"}</span></td>
                       <td className="actions-cell">
                         <button className="link-button" type="button" onClick={() => handleEdit(client)}>Editar</button>
                         <button className="link-button danger" type="button" onClick={() => setConfirm({
                           id: client.id,
-                          name: fullName,
+                          name,
                           nextStatus: client.status === "active" ? "inactive" : "active",
                         })}>
                           {client.status === "active" ? "Desactivar" : "Activar"}

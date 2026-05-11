@@ -563,6 +563,33 @@ input, textarea, select {
   font-size: var(--text-sm);
 }
 
+.sale-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+
+.sale-summary > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--color-bg-input);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.sale-summary span {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+}
+
+.sale-summary strong {
+  overflow-wrap: anywhere;
+}
+
 .status-pill {
   display: inline-flex;
   min-height: 28px;
@@ -689,5 +716,9 @@ input, textarea, select {
 
   .profile-summary .status-pill {
     margin-left: 0;
+  }
+
+  .sale-summary {
+    grid-template-columns: 1fr;
   }
 }

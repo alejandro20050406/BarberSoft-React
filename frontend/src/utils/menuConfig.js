@@ -4,6 +4,7 @@ import { PATHS } from "../routes/paths";
 
 export const adminMenu = [
   { label: "Inicio", path: PATHS.admin },
+  { label: "Venta Servicio", path: PATHS.adminSalesService },
   { label: "Productos", path: PATHS.adminProducts },
   { label: "Servicios", path: PATHS.adminServices },
   { label: "Cat. Productos", path: PATHS.adminProductCategories },
