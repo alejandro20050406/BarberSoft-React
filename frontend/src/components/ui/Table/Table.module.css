@@ -15,12 +15,12 @@
 
 .thead {
   background:
-    linear-gradient(135deg, rgba(17, 19, 24, 0.98), rgba(44, 49, 60, 0.96));
+    linear-gradient(135deg, var(--color-dark), var(--color-dark-3));
 }
 
 .th {
   padding: var(--space-3) var(--space-4);
-  color: rgba(245, 240, 232, 0.78);
+  color: rgba(255, 255, 255, 0.84);
   font-family: var(--font-body);
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
@@ -44,7 +44,7 @@
 }
 
 .tr:hover {
-  background-color: #fbf6ee;
+  background-color: var(--color-bg-hover);
 }
 
 .td {
@@ -66,7 +66,7 @@
   gap: var(--space-3);
   padding: var(--space-12) var(--space-4);
   background:
-    radial-gradient(circle at top, rgba(201, 168, 76, 0.08), transparent 48%),
+    radial-gradient(circle at top, rgba(20, 85, 160, 0.1), transparent 48%),
     var(--color-bg-card);
 }
 
@@ -89,7 +89,7 @@
   width: 80%;
   height: 14px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, #ede5d8 25%, #f7f1e8 50%, #ede5d8 75%);
+  background: linear-gradient(90deg, #dce8f5 25%, #f7fbff 50%, #dce8f5 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }

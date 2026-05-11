@@ -2,7 +2,16 @@ import { getAuthToken } from "./storage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
-const buildUrl = (endpoint) => `${API_BASE_URL}${endpoint}`;
+const buildUrl = (endpoint) => {
+  const baseUrl = API_BASE_URL.replace(/\/$/, "");
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+  if (baseUrl.endsWith("/api") && normalizedEndpoint.startsWith("/api/")) {
+    return `${baseUrl}${normalizedEndpoint.slice("/api".length)}`;
+  }
+
+  return `${baseUrl}${normalizedEndpoint}`;
+};
 
 export async function request(endpoint, options = {}) {
   const { body, headers, ...fetchOptions } = options;

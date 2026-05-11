@@ -138,7 +138,7 @@ input, textarea, select {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gold-dark);
+  background: var(--color-dark-4);
 }
 
 /* ============================================
@@ -147,7 +147,7 @@ input, textarea, select {
 
 ::selection {
   background-color: var(--color-gold);
-  color: var(--color-black);
+  color: var(--color-white);
 }
 
 /* ============================================
@@ -247,7 +247,7 @@ input, textarea, select {
 
 .menu-link:hover,
 .menu-link.active {
-  color: var(--color-black);
+  color: var(--color-white);
   background: var(--color-gold);
 }
 
@@ -293,9 +293,13 @@ input, textarea, select {
   display: grid;
   min-height: 100vh;
   padding: var(--space-6);
-  background:
-    linear-gradient(rgba(10, 10, 10, 0.72), rgba(10, 10, 10, 0.66)),
-    url("../assets/hero.png") center / cover;
+  background-color: var(--color-bg-strong);
+  background-image:
+    linear-gradient(rgba(7, 22, 47, 0.78), rgba(7, 22, 47, 0.72)),
+    url("../assets/logo-monkeys.jpeg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover, min(78vw, 900px) auto;
   place-items: center;
 }
 
@@ -336,7 +340,7 @@ input, textarea, select {
   padding: var(--space-6);
   color: var(--color-white-soft);
   text-align: left;
-  background: rgba(26, 29, 36, 0.92);
+  background: rgba(7, 22, 47, 0.92);
   border: var(--border-thin);
   border-radius: var(--radius-md);
 }
@@ -359,7 +363,7 @@ input, textarea, select {
   margin: 0 auto;
   padding: var(--space-8);
   color: var(--color-white);
-  background: rgba(26, 29, 36, 0.96);
+  background: rgba(7, 22, 47, 0.96);
   border: var(--border-thin);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-xl);
@@ -474,6 +478,11 @@ input, textarea, select {
   box-shadow: var(--shadow-gold);
 }
 
+.field-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
 .select-field {
   max-width: 230px;
 }
@@ -486,7 +495,7 @@ input, textarea, select {
 }
 
 .button-primary {
-  color: var(--color-black);
+  color: var(--color-white);
   background: var(--color-gold);
 }
 
@@ -549,6 +558,11 @@ input, textarea, select {
   color: var(--color-danger);
 }
 
+.success-text {
+  color: var(--color-success);
+  font-size: var(--text-sm);
+}
+
 .status-pill {
   display: inline-flex;
   min-height: 28px;
@@ -605,6 +619,46 @@ input, textarea, select {
   justify-content: flex-end;
 }
 
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.profile-summary .status-pill {
+  margin-left: auto;
+}
+
+.profile-avatar {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  color: var(--color-white);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  background: var(--color-info);
+  border-radius: var(--radius-full);
+  place-items: center;
+}
+
+.permission-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.permission-pill {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-info);
+  background: var(--color-info-bg);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+}
+
 @media (max-width: 760px) {
   .public-layout,
   .page-shell {
@@ -626,5 +680,14 @@ input, textarea, select {
 
   .select-field {
     max-width: none;
+  }
+
+  .profile-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-summary .status-pill {
+    margin-left: 0;
   }
 }

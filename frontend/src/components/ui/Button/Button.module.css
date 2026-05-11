@@ -38,13 +38,13 @@
   outline: none;
   box-shadow:
     var(--shadow-sm),
-    0 0 0 4px rgba(201, 168, 76, 0.18);
+    var(--shadow-gold);
 }
 
 /* --- VARIANTES --- */
 .primary {
   background-color: var(--color-gold);
-  color: var(--color-black);
+  color: var(--color-white);
   border-color: var(--color-gold);
 }
 
@@ -73,7 +73,7 @@
 }
 
 .secondary:active:not(:disabled) {
-  background-color: rgba(201, 168, 76, 0.2);
+  background-color: var(--color-info-bg);
 }
 
 .danger {
@@ -83,14 +83,14 @@
 }
 
 .danger:hover:not(:disabled) {
-  background-color: #e87070;
-  border-color: #e87070;
-  box-shadow: 0 0 12px rgba(217, 95, 95, 0.3);
+  background-color: var(--color-gold-light);
+  border-color: var(--color-gold-light);
+  box-shadow: var(--shadow-gold);
   transform: translateY(-1px);
 }
 
 .danger:active:not(:disabled) {
-  background-color: #c04040;
+  background-color: var(--color-gold-dark);
 }
 
 .ghost {

@@ -23,6 +23,7 @@ import EmployeesPage from "../pages/admin/EmployeesPage";
 import ClientsPage from "../pages/admin/ClientsPage";
 import MySalesPage from "../pages/employee/MySalesPage";
 import CashClosingPage from "../pages/employee/CashClosingPage";
+import ProfilePage from "../pages/ProfilePage";
 
 export default function AppRouter() {
   return (
@@ -56,6 +57,7 @@ export default function AppRouter() {
           <Route path={PATHS.adminClients} element={<ClientsPage />} />
           <Route path={PATHS.adminProductCategories} element={<ProductCategoriesPage />} />
           <Route path={PATHS.adminServiceCategories} element={<ServiceCategoriesPage />} />
+          <Route path={PATHS.adminProfile} element={<ProfilePage />} />
         </Route>
 
         {/* Rutas de empleado */}
@@ -71,6 +73,7 @@ export default function AppRouter() {
           <Route path={PATHS.employeeSalesService} element={<div>Venta de Servicio</div>} />
           <Route path={PATHS.employeeMySales} element={<MySalesPage />} />
           <Route path={PATHS.employeeCashClosing} element={<CashClosingPage />} />
+          <Route path={PATHS.employeeProfile} element={<ProfilePage />} />
         </Route>
 
         <Route path="*" element={<Navigate to={PATHS.home} replace />} />
