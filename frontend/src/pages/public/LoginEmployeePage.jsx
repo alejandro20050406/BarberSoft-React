@@ -1,27 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../routes/paths";
-import { authService } from "../../services/authService";
 
 const LoginEmployeePage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    setIsLoading(true);
-    setError("");
+  const handleLogin = () => {
+    const user = usersMock.find(
+      (candidate) =>
+        candidate.username === username &&
+        candidate.password === password &&
+        candidate.role === "employee" &&
+        candidate.status === "active",
+    );
 
-    const response = await authService.login({ username, password, role: "employee" });
-
-    setIsLoading(false);
-
-    if (!response.ok) {
-      setError(response.message);
+    if (!user) {
+      setError("Credenciales incorrectas o acceso de empleado inactivo.");
       return;
     }
+
+    const user = {
+      id: employee.id,
+      username: employee.username,
+      password: employee.password,
+      role: "employee",
+      name: employee.name,
+      status: employee.status,
+      permissions: EMPLOYEE_PERMISSIONS,
+    };
 
     navigate(PATHS.employee);
   };
@@ -39,7 +48,7 @@ const LoginEmployeePage = () => {
         {error && <p className="form-error">{error}</p>}
 
         <button className="button button-primary" type="button" onClick={handleLogin}>
-          {isLoading ? "Ingresando..." : "Ingresar"}
+          Ingresar
         </button>
       </section>
     </div>
