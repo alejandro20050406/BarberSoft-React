@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+import { getAuthToken } from "./storage";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 const buildUrl = (endpoint) => {
   const baseUrl = API_BASE_URL.replace(/\/$/, "");
@@ -13,12 +15,14 @@ const buildUrl = (endpoint) => {
 
 export async function request(endpoint, options = {}) {
   const { body, headers, ...fetchOptions } = options;
+  const token = getAuthToken();
 
   try {
     const response = await fetch(buildUrl(endpoint), {
       ...fetchOptions,
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),

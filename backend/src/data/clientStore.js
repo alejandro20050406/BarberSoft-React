@@ -4,18 +4,18 @@ const VALID_STATUSES = new Set(["active", "inactive"]);
 const clientsSeed = [
   {
     id: 1,
-    name: "Carlos Ramirez",
-    phone: "555-120-3344",
+    firstName: "Carlos",
+    lastName: "Ramirez",
+    phone: "3121234567",
     email: "carlos.ramirez@example.com",
-    notes: "Cliente frecuente para corte clasico.",
     status: "active",
   },
   {
     id: 2,
-    name: "Miguel Torres",
-    phone: "555-880-1122",
-    email: "miguel.torres@example.com",
-    notes: "Prefiere cita por la tarde.",
+    firstName: "Luis",
+    lastName: "Hernandez",
+    phone: "3127654321",
+    email: "luis.hernandez@example.com",
     status: "active",
   },
 ];
@@ -26,22 +26,26 @@ function makeError(message, errors = {}, status = 400) {
 
 function validateClient(payload, clients, currentId = null) {
   const errors = {};
-  const name = payload.name?.trim() ?? "";
+  const firstName = payload.firstName?.trim() ?? "";
+  const lastName = payload.lastName?.trim() ?? "";
   const phone = payload.phone?.trim() ?? "";
   const email = payload.email?.trim() ?? "";
 
-  if (!name) errors.name = "El nombre del cliente es obligatorio.";
+  if (!firstName) errors.firstName = "El nombre del cliente es obligatorio.";
+  if (!lastName) errors.lastName = "El apellido del cliente es obligatorio.";
   if (!phone) errors.phone = "El telefono es obligatorio.";
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = "Ingrese un correo valido.";
-  }
+  if (email && !email.includes("@")) errors.email = "Ingrese un correo valido.";
 
-  const duplicatedPhone = clients.some(
-    (client) => client.id !== currentId && normalize(client.phone) === normalize(phone),
+  const duplicated = clients.some(
+    (client) =>
+      client.id !== currentId &&
+      (normalize(client.phone) === normalize(phone) ||
+        (email && normalize(client.email) === normalize(email))),
   );
 
-  if (duplicatedPhone) {
-    errors.phone = "Ya existe un cliente con ese telefono.";
+  if (duplicated) {
+    if (phone) errors.phone = "Ya existe un cliente con ese telefono.";
+    if (email) errors.email = "Ya existe un cliente con ese correo.";
   }
 
   return errors;
@@ -50,10 +54,10 @@ function validateClient(payload, clients, currentId = null) {
 function buildClient(payload, currentClient = {}) {
   return {
     ...currentClient,
-    name: payload.name.trim(),
+    firstName: payload.firstName.trim(),
+    lastName: payload.lastName.trim(),
     phone: payload.phone.trim(),
     email: payload.email?.trim() ?? "",
-    notes: payload.notes?.trim() ?? "",
     status: VALID_STATUSES.has(payload.status) ? payload.status : currentClient.status ?? "active",
   };
 }
@@ -69,9 +73,10 @@ function createClientStore(seed) {
       const status = filters.status ?? "all";
 
       const data = clients.filter((client) => {
+        const fullName = `${client.firstName} ${client.lastName}`.trim();
         const matchesQuery =
           !query ||
-          normalize(client.name).includes(query) ||
+          normalize(fullName).includes(query) ||
           normalize(client.phone).includes(query) ||
           normalize(client.email).includes(query);
         const matchesStatus = status === "all" || client.status === status;
@@ -91,7 +96,6 @@ function createClientStore(seed) {
 
       const id = clients.length > 0 ? Math.max(...clients.map((client) => client.id)) + 1 : 1;
       const client = { id, ...buildClient(payload) };
-
       clients = [...clients, client];
 
       return { ok: true, status: 201, data: client };

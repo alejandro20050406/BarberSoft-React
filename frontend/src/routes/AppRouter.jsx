@@ -2,6 +2,7 @@
 
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { PATHS } from "./paths";
+import ProtectedRoute from "./ProtectedRoute";
 
 import PublicLayout from "../layouts/PublicLayout";
 import AdminLayout from "../layouts/AdminLayout";
@@ -37,7 +38,13 @@ export default function AppRouter() {
         </Route>
 
         {/* Rutas de administrador */}
-        <Route element={<AdminLayout />}>
+        <Route
+          element={(
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminLayout />
+            </ProtectedRoute>
+          )}
+        >
           <Route path={PATHS.admin} element={<AdminMenuPage />} />
           <Route path={PATHS.adminSalesProduct} element={<div>Venta de Producto</div>} />
           <Route path={PATHS.adminSalesService} element={<div>Venta de Servicio</div>} />
@@ -54,7 +61,13 @@ export default function AppRouter() {
         </Route>
 
         {/* Rutas de empleado */}
-        <Route element={<EmployeeLayout />}>
+        <Route
+          element={(
+            <ProtectedRoute allowedRoles={["employee"]}>
+              <EmployeeLayout />
+            </ProtectedRoute>
+          )}
+        >
           <Route path={PATHS.employee} element={<EmployeeMenuPage />} />
           <Route path={PATHS.employeeSalesProduct} element={<div>Venta de Producto</div>} />
           <Route path={PATHS.employeeSalesService} element={<div>Venta de Servicio</div>} />

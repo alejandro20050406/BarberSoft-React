@@ -1,111 +1,67 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import CatalogForm from "../../components/forms/CatalogForm";
 import FormField from "../../components/forms/FormField";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import { clientsService } from "../../services/clientsService";
+import { useClients } from "../../hooks/useClients";
 
 const EMPTY_FORM = {
-  name: "",
+  firstName: "",
+  lastName: "",
   phone: "",
   email: "",
-  notes: "",
 };
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState([]);
+  const {
+    clients,
+    filters,
+    setFilters,
+    isLoading,
+    isSaving,
+    requestError,
+    loadClients,
+    createClient,
+    updateClient,
+    setClientStatus,
+  } = useClients();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [errors, setErrors] = useState({});
-  const [filters, setFilters] = useState({ query: "", status: "all" });
+  const [apiMessage, setApiMessage] = useState("");
   const [confirm, setConfirm] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [requestError, setRequestError] = useState("");
-  const [formError, setFormError] = useState("");
-
-  const loadClients = useCallback(
-    async (currentFilters = filters, options = {}) => {
-      if (!options.silent) setIsLoading(true);
-      setRequestError("");
-
-      const response = await clientsService.list(currentFilters);
-
-      if (!response.ok) {
-        setRequestError(response.message);
-      } else {
-        setClients(response.data);
-      }
-
-      if (!options.silent) setIsLoading(false);
-    },
-    [filters],
-  );
-
-  useEffect(() => {
-    let isActive = true;
-
-    async function fetchClients() {
-      setIsLoading(true);
-      setRequestError("");
-
-      const response = await clientsService.list(filters);
-
-      if (!isActive) return;
-
-      if (!response.ok) {
-        setRequestError(response.message);
-      } else {
-        setClients(response.data);
-      }
-
-      setIsLoading(false);
-    }
-
-    fetchClients();
-
-    return () => {
-      isActive = false;
-    };
-  }, [filters]);
 
   const handleChange = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
-    setFormError("");
+    setApiMessage("");
   };
 
   const handleSubmit = async () => {
-    setIsSaving(true);
-    setFormError("");
-
     const response =
       editingId === null
-        ? await clientsService.create(form)
-        : await clientsService.update(editingId, form);
-
-    setIsSaving(false);
+        ? await createClient(form)
+        : await updateClient(editingId, form);
 
     if (!response.ok) {
       setErrors(response.errors ?? {});
-      setFormError(response.message);
+      setApiMessage(response.message);
       return;
     }
 
     handleReset();
-    loadClients(filters, { silent: true });
   };
 
   const handleEdit = (client) => {
     setEditingId(client.id);
     setForm({
-      name: client.name,
+      firstName: client.firstName,
+      lastName: client.lastName,
       phone: client.phone,
-      email: client.email,
-      notes: client.notes,
+      email: client.email ?? "",
     });
     setErrors({});
-    setFormError("");
+    setApiMessage("");
     setShowForm(true);
   };
 
@@ -113,29 +69,22 @@ export default function ClientsPage() {
     setForm(EMPTY_FORM);
     setEditingId(null);
     setErrors({});
-    setFormError("");
+    setApiMessage("");
     setShowForm(false);
   };
 
   const applyStatusChange = async () => {
     if (!confirm) return;
 
-    setIsSaving(true);
-    setRequestError("");
-
-    const response = await clientsService.setStatus(confirm.id, confirm.nextStatus);
-
-    setIsSaving(false);
-
+    const response = await setClientStatus(confirm.id, confirm.nextStatus);
     if (!response.ok) {
-      setRequestError(response.message);
+      setApiMessage(response.message);
       setConfirm(null);
       return;
     }
 
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
-    loadClients(filters, { silent: true });
   };
 
   return (
@@ -154,37 +103,31 @@ export default function ClientsPage() {
 
       {showForm && (
         <CatalogForm
-          title={editingId !== null ? "Editar cliente" : "Nuevo cliente"}
-          errorMessage={formError}
-          primaryLabel={editingId !== null ? "Guardar cambios" : "Agregar cliente"}
+          title={editingId !== null ? "Editar cliente" : "Crear Cliente"}
+          errorMessage={apiMessage}
+          primaryLabel={editingId !== null ? "Guardar cambios" : "Guardar"}
           isSaving={isSaving}
           onSubmit={handleSubmit}
           onCancel={handleReset}
         >
-          <FormField label="Nombre" error={errors.name}>
-            <input className="field" value={form.name} onChange={(event) => handleChange("name", event.target.value)} />
+          <FormField label="Nombre" error={errors.firstName}>
+            <input className="field" value={form.firstName} onChange={(event) => handleChange("firstName", event.target.value)} />
+          </FormField>
+          <FormField label="Apellido" error={errors.lastName}>
+            <input className="field" value={form.lastName} onChange={(event) => handleChange("lastName", event.target.value)} />
           </FormField>
           <FormField label="Telefono" error={errors.phone}>
-            <input className="field" value={form.phone} onChange={(event) => handleChange("phone", event.target.value)} />
+            <input className="field" value={form.phone} placeholder="3121234567" onChange={(event) => handleChange("phone", event.target.value)} />
           </FormField>
-          <FormField label="Correo" error={errors.email}>
+          <FormField label="Correo electronico" error={errors.email}>
             <input className="field" type="email" value={form.email} onChange={(event) => handleChange("email", event.target.value)} />
-          </FormField>
-          <FormField label="Notas" error={errors.notes}>
-            <textarea className="field field-textarea" value={form.notes} onChange={(event) => handleChange("notes", event.target.value)} />
           </FormField>
         </CatalogForm>
       )}
 
       <section className="panel">
         <div className="toolbar">
-          <input
-            className="field"
-            type="search"
-            placeholder="Buscar nombre, telefono o correo"
-            value={filters.query}
-            onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
-          />
+          <input className="field" type="search" placeholder="Buscar cliente, telefono o correo" value={filters.query} onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} />
           <select className="field select-field" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
             <option value="all">Todos los estados</option>
             <option value="active">Activos</option>
@@ -205,37 +148,39 @@ export default function ClientsPage() {
           <p className="empty-text">No hay clientes con esos filtros.</p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table wide-table">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Nombre</th>
                   <th>Telefono</th>
                   <th>Correo</th>
-                  <th>Notas</th>
                   <th>Estado</th>
                   <th className="actions-cell">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id} className={editingId === client.id ? "editing-row" : ""}>
-                    <td>{client.name}</td>
-                    <td>{client.phone}</td>
-                    <td>{client.email || "Sin correo"}</td>
-                    <td>{client.notes || "Sin notas"}</td>
-                    <td><span className={`status-pill ${client.status}`}>{client.status === "active" ? "Activo" : "Inactivo"}</span></td>
-                    <td className="actions-cell">
-                      <button className="link-button" type="button" onClick={() => handleEdit(client)}>Editar</button>
-                      <button className="link-button danger" type="button" onClick={() => setConfirm({
-                        id: client.id,
-                        name: client.name,
-                        nextStatus: client.status === "active" ? "inactive" : "active",
-                      })}>
-                        {client.status === "active" ? "Desactivar" : "Activar"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {clients.map((client) => {
+                  const fullName = `${client.firstName} ${client.lastName}`.trim();
+
+                  return (
+                    <tr key={client.id} className={editingId === client.id ? "editing-row" : ""}>
+                      <td>{fullName}</td>
+                      <td>{client.phone}</td>
+                      <td>{client.email || "Sin correo"}</td>
+                      <td><span className={`status-pill ${client.status}`}>{client.status === "active" ? "Activo" : "Inactivo"}</span></td>
+                      <td className="actions-cell">
+                        <button className="link-button" type="button" onClick={() => handleEdit(client)}>Editar</button>
+                        <button className="link-button danger" type="button" onClick={() => setConfirm({
+                          id: client.id,
+                          name: fullName,
+                          nextStatus: client.status === "active" ? "inactive" : "active",
+                        })}>
+                          {client.status === "active" ? "Desactivar" : "Activar"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

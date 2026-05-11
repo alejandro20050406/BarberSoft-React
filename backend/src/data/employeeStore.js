@@ -4,65 +4,62 @@ const VALID_STATUSES = new Set(["active", "inactive"]);
 const employeesSeed = [
   {
     id: 1,
-    name: "Juan Perez",
-    username: "juan01",
-    password: "perez123",
-    phone: "555-443-2211",
-    hireDate: "2026-01-15",
+    firstName: "Juan",
+    lastName: "Perez",
+    username: "juan",
+    phone: "3121111111",
+    email: "juan@barbersoft.local",
+    password: "1234",
+    joinDate: "2026-01-15",
     status: "active",
   },
   {
     id: 2,
-    name: "Luis Medina",
-    username: "luis02",
-    password: "medina123",
-    phone: "555-901-2020",
-    hireDate: "2025-10-02",
+    firstName: "Maria",
+    lastName: "Lopez",
+    username: "maria",
+    phone: "3122222222",
+    email: "maria@barbersoft.local",
+    password: "1234",
+    joinDate: "2026-02-01",
     status: "active",
   },
 ];
-
-const ACCESS_VALUE_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/;
 
 function makeError(message, errors = {}, status = 400) {
   return { ok: false, status, message, errors };
 }
 
-function validateDate(value) {
-  if (!value) return false;
-  const date = new Date(`${value}T00:00:00`);
-  return !Number.isNaN(date.getTime());
-}
-
 function validateEmployee(payload, employees, currentId = null) {
   const errors = {};
-  const name = payload.name?.trim() ?? "";
+  const firstName = payload.firstName?.trim() ?? "";
+  const lastName = payload.lastName?.trim() ?? "";
   const username = payload.username?.trim() ?? "";
-  const password = payload.password?.trim() ?? "";
   const phone = payload.phone?.trim() ?? "";
-  const hireDate = payload.hireDate?.trim() ?? "";
+  const email = payload.email?.trim() ?? "";
+  const password = payload.password?.trim() ?? "";
+  const joinDate = payload.joinDate?.trim() ?? "";
+  const status = payload.status?.trim() ?? "";
 
-  if (!name) errors.name = "El nombre del empleado es obligatorio.";
+  if (!firstName) errors.firstName = "El nombre es obligatorio.";
+  if (!lastName) errors.lastName = "El apellido es obligatorio.";
   if (!username) errors.username = "El usuario es obligatorio.";
-  if (username && (username.length < 4 || username.length > 20 || !ACCESS_VALUE_PATTERN.test(username))) {
-    errors.username = "El usuario debe tener de 4 a 20 caracteres, solo letras y numeros, e incluir ambos.";
-  }
-  if (!password) errors.password = "La contrasena es obligatoria.";
-  if (password && (password.length < 6 || !ACCESS_VALUE_PATTERN.test(password))) {
-    errors.password = "La contrasena debe tener minimo 6 caracteres, solo letras y numeros, e incluir ambos.";
-  }
   if (!phone) errors.phone = "El telefono es obligatorio.";
-  if (!validateDate(hireDate)) {
-    errors.hireDate = "Ingrese una fecha de ingreso valida.";
-  }
+  if (!email || !email.includes("@")) errors.email = "Ingrese un correo valido.";
+  if (!password) errors.password = "La contrasena es obligatoria.";
+  if (!joinDate) errors.joinDate = "La fecha de ingreso es obligatoria.";
+  if (!status) errors.status = "Seleccione un estado.";
 
-  const duplicatedUsername = employees.some(
+  const duplicated = employees.some(
     (employee) =>
-      employee.id !== currentId && normalize(employee.username) === normalize(username),
+      employee.id !== currentId &&
+      (normalize(employee.username) === normalize(username) ||
+        normalize(employee.email) === normalize(email)),
   );
 
-  if (duplicatedUsername) {
-    errors.username = "Ya existe un empleado con ese usuario.";
+  if (duplicated) {
+    if (username) errors.username = "Ya existe un empleado con ese usuario.";
+    if (email) errors.email = "Ya existe un empleado con ese correo.";
   }
 
   return errors;
@@ -71,14 +68,14 @@ function validateEmployee(payload, employees, currentId = null) {
 function buildEmployee(payload, currentEmployee = {}) {
   return {
     ...currentEmployee,
-    name: payload.name.trim(),
+    firstName: payload.firstName.trim(),
+    lastName: payload.lastName.trim(),
     username: payload.username.trim(),
-    password: payload.password.trim(),
     phone: payload.phone.trim(),
-    hireDate: payload.hireDate.trim(),
-    status: VALID_STATUSES.has(payload.status)
-      ? payload.status
-      : currentEmployee.status ?? "active",
+    email: payload.email.trim(),
+    password: payload.password.trim(),
+    joinDate: payload.joinDate,
+    status: VALID_STATUSES.has(payload.status) ? payload.status : currentEmployee.status ?? "active",
   };
 }
 
@@ -93,11 +90,12 @@ function createEmployeeStore(seed) {
       const status = filters.status ?? "all";
 
       const data = employees.filter((employee) => {
+        const fullName = `${employee.firstName} ${employee.lastName}`.trim();
         const matchesQuery =
           !query ||
-          normalize(employee.name).includes(query) ||
+          normalize(fullName).includes(query) ||
           normalize(employee.username).includes(query) ||
-          normalize(employee.phone).includes(query);
+          normalize(employee.email).includes(query);
         const matchesStatus = status === "all" || employee.status === status;
 
         return matchesQuery && matchesStatus;
@@ -116,7 +114,6 @@ function createEmployeeStore(seed) {
       const id =
         employees.length > 0 ? Math.max(...employees.map((employee) => employee.id)) + 1 : 1;
       const employee = { id, ...buildEmployee(payload) };
-
       employees = [...employees, employee];
 
       return { ok: true, status: 201, data: employee };

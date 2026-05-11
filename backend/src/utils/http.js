@@ -2,7 +2,7 @@ export function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, OPTIONS",
   });
   response.end(JSON.stringify(payload));
@@ -11,7 +11,7 @@ export function sendJson(response, statusCode, payload) {
 export function sendNoContent(response) {
   response.writeHead(204, {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, OPTIONS",
   });
   response.end();
