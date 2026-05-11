@@ -1,9 +1,5 @@
 import { createServer } from "node:http";
 import { env } from "./config/env.js";
-import { requireRoles } from "./middleware/auth.js";
-import { handleAuthRoutes } from "./routes/authRoutes.js";
-import { handleClientRoutes } from "./routes/clientRoutes.js";
-import { handleEmployeeRoutes } from "./routes/employeeRoutes.js";
 import { handleHealthRoute } from "./routes/healthRoutes.js";
 import { handleProductCategoryRoutes } from "./routes/productCategoryRoutes.js";
 import { handleProductRoutes } from "./routes/productRoutes.js";
@@ -93,6 +89,28 @@ export function createApp() {
     );
 
     if (productsHandled) {
+      return;
+    }
+
+    const clientsHandled = await handleClientRoutes(
+      request,
+      response,
+      pathname,
+      url.searchParams,
+    );
+
+    if (clientsHandled) {
+      return;
+    }
+
+    const employeesHandled = await handleEmployeeRoutes(
+      request,
+      response,
+      pathname,
+      url.searchParams,
+    );
+
+    if (employeesHandled) {
       return;
     }
 
