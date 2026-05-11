@@ -1,9 +1,9 @@
 import { env } from "../config/env.js";
-import { clientStore } from "../data/clientStore.js";
+import { serviceStore } from "../data/serviceStore.js";
 import { readJsonBody, sendJson } from "../utils/http.js";
 
-function parseClientRoute(pathname) {
-  const basePath = `${env.apiPrefix}/clients`;
+function parseServiceRoute(pathname) {
+  const basePath = `${env.apiPrefix}/services`;
 
   if (pathname === basePath) {
     return { matches: true };
@@ -33,8 +33,8 @@ function sendStoreResult(response, result) {
   });
 }
 
-export async function handleClientRoutes(request, response, pathname, searchParams) {
-  const route = parseClientRoute(pathname);
+export async function handleServiceRoutes(request, response, pathname, searchParams) {
+  const route = parseServiceRoute(pathname);
 
   if (!route.matches) {
     return false;
@@ -44,8 +44,9 @@ export async function handleClientRoutes(request, response, pathname, searchPara
     if (request.method === "GET" && route.id === undefined) {
       sendStoreResult(
         response,
-        clientStore.list({
+        serviceStore.list({
           query: searchParams.get("query") ?? "",
+          category: searchParams.get("category") ?? "all",
           status: searchParams.get("status") ?? "all",
         }),
       );
@@ -53,18 +54,18 @@ export async function handleClientRoutes(request, response, pathname, searchPara
     }
 
     if (request.method === "POST" && route.id === undefined) {
-      sendStoreResult(response, clientStore.create(await readJsonBody(request)));
+      sendStoreResult(response, serviceStore.create(await readJsonBody(request)));
       return true;
     }
 
     if (request.method === "PUT" && route.id !== undefined && route.action === undefined) {
-      sendStoreResult(response, clientStore.update(route.id, await readJsonBody(request)));
+      sendStoreResult(response, serviceStore.update(route.id, await readJsonBody(request)));
       return true;
     }
 
     if (request.method === "PATCH" && route.id !== undefined && route.action === "status") {
       const body = await readJsonBody(request);
-      sendStoreResult(response, clientStore.setStatus(route.id, body.status));
+      sendStoreResult(response, serviceStore.setStatus(route.id, body.status));
       return true;
     }
 

@@ -1,9 +1,15 @@
 import { createServer } from "node:http";
 import { env } from "./config/env.js";
+import { requireRoles } from "./middleware/auth.js";
+import { handleAuthRoutes } from "./routes/authRoutes.js";
+import { handleClientRoutes } from "./routes/clientRoutes.js";
+import { handleEmployeeRoutes } from "./routes/employeeRoutes.js";
 import { handleHealthRoute } from "./routes/healthRoutes.js";
 import { handleProductCategoryRoutes } from "./routes/productCategoryRoutes.js";
 import { handleProductRoutes } from "./routes/productRoutes.js";
+import { handleSalesRoutes } from "./routes/salesRoutes.js";
 import { handleServiceCategoryRoutes } from "./routes/serviceCategoryRoutes.js";
+import { handleServiceRoutes } from "./routes/serviceRoutes.js";
 import { normalizePath, sendJson, sendNoContent } from "./utils/http.js";
 
 const adminRoutePrefixes = [
@@ -11,6 +17,7 @@ const adminRoutePrefixes = [
   "/employees",
   "/products",
   "/product-categories",
+  "/services",
   "/service-categories",
 ];
 
@@ -41,6 +48,12 @@ export function createApp() {
     const authHandled = await handleAuthRoutes(request, response, pathname);
 
     if (authHandled) {
+      return;
+    }
+
+    const salesHandled = await handleSalesRoutes(request, response, pathname);
+
+    if (salesHandled) {
       return;
     }
 
@@ -92,25 +105,14 @@ export function createApp() {
       return;
     }
 
-    const clientsHandled = await handleClientRoutes(
+    const servicesHandled = await handleServiceRoutes(
       request,
       response,
       pathname,
       url.searchParams,
     );
 
-    if (clientsHandled) {
-      return;
-    }
-
-    const employeesHandled = await handleEmployeeRoutes(
-      request,
-      response,
-      pathname,
-      url.searchParams,
-    );
-
-    if (employeesHandled) {
+    if (servicesHandled) {
       return;
     }
 
