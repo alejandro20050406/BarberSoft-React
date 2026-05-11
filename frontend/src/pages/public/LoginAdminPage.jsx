@@ -1,29 +1,28 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usersMock } from "../../mocks/users.mock";
 import { PATHS } from "../../routes/paths";
+import { authService } from "../../services/authService";
 
 const LoginAdminPage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    const user = usersMock.find(
-      (candidate) =>
-        candidate.username === username &&
-        candidate.password === password &&
-        candidate.role === "admin" &&
-        candidate.status === "active",
-    );
+  const handleLogin = async () => {
+    setIsLoading(true);
+    setError("");
 
-    if (!user) {
-      setError("Credenciales incorrectas o acceso de administrador inactivo.");
+    const response = await authService.login({ username, password, role: "admin" });
+
+    setIsLoading(false);
+
+    if (!response.ok) {
+      setError(response.message);
       return;
     }
 
-    localStorage.setItem("user", JSON.stringify(user));
     navigate(PATHS.admin);
   };
 
@@ -40,7 +39,7 @@ const LoginAdminPage = () => {
         {error && <p className="form-error">{error}</p>}
 
         <button className="button button-primary" type="button" onClick={handleLogin}>
-          Ingresar
+          {isLoading ? "Ingresando..." : "Ingresar"}
         </button>
       </section>
     </div>

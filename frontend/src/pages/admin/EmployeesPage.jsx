@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import FormField from "../../components/forms/FormField";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import { employeesService } from "../../services/employeesService";
+import { useEmployees } from "../../hooks/useEmployees";
 
 const EMPTY_FORM = {
   firstName: "",
@@ -20,8 +20,18 @@ const STATUS_LABELS = {
 };
 
 export default function EmployeesPage() {
-  const [filters, setFilters] = useState({ query: "", status: "all" });
-  const [employees, setEmployees] = useState(() => employeesService.list(filters).data);
+  const {
+    employees,
+    filters,
+    setFilters,
+    isLoading,
+    isSaving,
+    requestError,
+    loadEmployees,
+    createEmployee,
+    updateEmployee,
+    setEmployeeStatus,
+  } = useEmployees();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -29,27 +39,17 @@ export default function EmployeesPage() {
   const [apiMessage, setApiMessage] = useState("");
   const [confirm, setConfirm] = useState(null);
 
-  const visibleEmployees = useMemo(() => {
-    const response = employeesService.list(filters);
-    return response.ok ? response.data : employees;
-  }, [filters, employees]);
-
-  const refreshEmployees = () => {
-    const response = employeesService.list({ query: "", status: "all" });
-    if (response.ok) setEmployees(response.data);
-  };
-
   const handleChange = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setApiMessage("");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const response =
       editingId === null
-        ? employeesService.create(form)
-        : employeesService.update(editingId, form);
+        ? await createEmployee(form)
+        : await updateEmployee(editingId, form);
 
     if (!response.ok) {
       setErrors(response.errors ?? {});
@@ -57,7 +57,6 @@ export default function EmployeesPage() {
       return;
     }
 
-    refreshEmployees();
     handleReset();
   };
 
@@ -86,17 +85,16 @@ export default function EmployeesPage() {
     setShowForm(false);
   };
 
-  const applyStatusChange = () => {
+  const applyStatusChange = async () => {
     if (!confirm) return;
 
-    const response = employeesService.setStatus(confirm.id, confirm.nextStatus);
+    const response = await setEmployeeStatus(confirm.id, confirm.nextStatus);
     if (!response.ok) {
       setApiMessage(response.message);
       setConfirm(null);
       return;
     }
 
-    refreshEmployees();
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
   };
@@ -167,7 +165,7 @@ export default function EmployeesPage() {
               Cancelar
             </button>
             <button className="button button-primary" type="button" onClick={handleSubmit}>
-              Guardar
+              {isSaving ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </section>
@@ -183,7 +181,16 @@ export default function EmployeesPage() {
           </select>
         </div>
 
-        {visibleEmployees.length === 0 ? (
+        {isLoading ? (
+          <p className="empty-text">Cargando empleados...</p>
+        ) : requestError ? (
+          <div>
+            <p className="form-error">{requestError}</p>
+            <button className="button button-secondary" type="button" onClick={() => loadEmployees()}>
+              Reintentar
+            </button>
+          </div>
+        ) : employees.length === 0 ? (
           <p className="empty-text">No hay empleados con esos filtros.</p>
         ) : (
           <div className="table-wrap">
@@ -200,7 +207,7 @@ export default function EmployeesPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleEmployees.map((employee) => {
+                {employees.map((employee) => {
                   const fullName = `${employee.firstName} ${employee.lastName}`.trim();
 
                   return (

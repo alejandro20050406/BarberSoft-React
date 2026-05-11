@@ -529,7 +529,8 @@ input, textarea, select {
 }
 
 .editing-row {
-  background: var(--color-warning-bg);
+  color: var(--color-black);
+  background: var(--color-gold);
 }
 
 .actions-cell {

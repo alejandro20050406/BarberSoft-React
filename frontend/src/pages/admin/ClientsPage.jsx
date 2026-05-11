@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import CatalogForm from "../../components/forms/CatalogForm";
 import FormField from "../../components/forms/FormField";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import { clientsService } from "../../services/clientsService";
+import { useClients } from "../../hooks/useClients";
 
 const EMPTY_FORM = {
   firstName: "",
@@ -12,8 +12,18 @@ const EMPTY_FORM = {
 };
 
 export default function ClientsPage() {
-  const [filters, setFilters] = useState({ query: "", status: "all" });
-  const [clients, setClients] = useState(() => clientsService.list(filters).data);
+  const {
+    clients,
+    filters,
+    setFilters,
+    isLoading,
+    isSaving,
+    requestError,
+    loadClients,
+    createClient,
+    updateClient,
+    setClientStatus,
+  } = useClients();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -21,27 +31,17 @@ export default function ClientsPage() {
   const [apiMessage, setApiMessage] = useState("");
   const [confirm, setConfirm] = useState(null);
 
-  const visibleClients = useMemo(() => {
-    const response = clientsService.list(filters);
-    return response.ok ? response.data : clients;
-  }, [filters, clients]);
-
-  const refreshClients = () => {
-    const response = clientsService.list({ query: "", status: "all" });
-    if (response.ok) setClients(response.data);
-  };
-
   const handleChange = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setApiMessage("");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const response =
       editingId === null
-        ? clientsService.create(form)
-        : clientsService.update(editingId, form);
+        ? await createClient(form)
+        : await updateClient(editingId, form);
 
     if (!response.ok) {
       setErrors(response.errors ?? {});
@@ -49,7 +49,6 @@ export default function ClientsPage() {
       return;
     }
 
-    refreshClients();
     handleReset();
   };
 
@@ -74,17 +73,16 @@ export default function ClientsPage() {
     setShowForm(false);
   };
 
-  const applyStatusChange = () => {
+  const applyStatusChange = async () => {
     if (!confirm) return;
 
-    const response = clientsService.setStatus(confirm.id, confirm.nextStatus);
+    const response = await setClientStatus(confirm.id, confirm.nextStatus);
     if (!response.ok) {
       setApiMessage(response.message);
       setConfirm(null);
       return;
     }
 
-    refreshClients();
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
   };
@@ -108,6 +106,7 @@ export default function ClientsPage() {
           title={editingId !== null ? "Editar cliente" : "Crear Cliente"}
           errorMessage={apiMessage}
           primaryLabel={editingId !== null ? "Guardar cambios" : "Guardar"}
+          isSaving={isSaving}
           onSubmit={handleSubmit}
           onCancel={handleReset}
         >
@@ -136,7 +135,16 @@ export default function ClientsPage() {
           </select>
         </div>
 
-        {visibleClients.length === 0 ? (
+        {isLoading ? (
+          <p className="empty-text">Cargando clientes...</p>
+        ) : requestError ? (
+          <div>
+            <p className="form-error">{requestError}</p>
+            <button className="button button-secondary" type="button" onClick={() => loadClients()}>
+              Reintentar
+            </button>
+          </div>
+        ) : clients.length === 0 ? (
           <p className="empty-text">No hay clientes con esos filtros.</p>
         ) : (
           <div className="table-wrap">
@@ -151,7 +159,7 @@ export default function ClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleClients.map((client) => {
+                {clients.map((client) => {
                   const fullName = `${client.firstName} ${client.lastName}`.trim();
 
                   return (

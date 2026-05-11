@@ -3,6 +3,8 @@ export const API_ENDPOINTS = {
     login: "/api/auth/login",
     me: "/api/auth/me",
   },
+  clients: "/api/clients",
+  employees: "/api/employees",
   users: "/api/users",
   roles: "/api/roles",
   services: "/api/services",

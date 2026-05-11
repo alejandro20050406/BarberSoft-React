@@ -2,6 +2,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../routes/paths";
+import { clearSession } from "../../services/storage";
 import { adminMenu, employeeMenu } from "../../utils/menuConfig";
 import RoleMenu from "./RoleMenu";
 
@@ -10,7 +11,7 @@ const Sidebar = ({ role }) => {
   const menuItems = role === "admin" ? adminMenu : employeeMenu;
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    clearSession();
     navigate(PATHS.home);
   };
 
