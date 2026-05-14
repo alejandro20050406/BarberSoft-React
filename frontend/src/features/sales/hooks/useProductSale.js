@@ -153,6 +153,22 @@ export function useProductSale() {
     ),
   ];
   const hasInventoryBlock = inventoryBlockingMessages.length > 0;
+  const lineValidationErrors = lineItems.reduce((currentErrors, line, index) => {
+    const nextErrors = { ...currentErrors };
+
+    if (!line.productId || !line.product) {
+      nextErrors[`lineItems.${index}.productId`] = "Seleccione un producto existente.";
+    }
+
+    if (!line.quantity) {
+      nextErrors[`lineItems.${index}.quantity`] = "Ingrese una cantidad mayor a 0.";
+    } else if (line.product && line.requestedTotal > line.product.stock) {
+      nextErrors[`lineItems.${index}.quantity`] = "La cantidad supera el stock disponible.";
+    }
+
+    return nextErrors;
+  }, {});
+  const hasLineValidationErrors = Object.keys(lineValidationErrors).length > 0;
 
   const clearMessages = () => {
     setRequestError("");
@@ -209,6 +225,22 @@ export function useProductSale() {
   };
 
   const submit = async () => {
+    if (hasLineValidationErrors || hasInventoryBlock) {
+      setErrors((current) => ({
+        ...current,
+        ...lineValidationErrors,
+        ...(hasInventoryBlock ? { lineItems: "Corrige el inventario antes de registrar la venta." } : {}),
+      }));
+      setRequestError("No se pudo registrar la venta de producto.");
+      setSuccessMessage("");
+      return {
+        ok: false,
+        status: 422,
+        message: "No se pudo registrar la venta de producto.",
+        errors: lineValidationErrors,
+      };
+    }
+
     setIsSaving(true);
     setRequestError("");
     setSuccessMessage("");
@@ -217,9 +249,11 @@ export function useProductSale() {
       clientId: Number(form.clientId),
       employeeId: Number(form.employeeId),
       linkedServiceId: form.linkedServiceId ? Number(form.linkedServiceId) : null,
-      lineItems: form.lineItems.map((line) => ({
+      lineItems: lineItems.map((line) => ({
         productId: Number(line.productId),
-        quantity: Number(line.quantity),
+        quantity: line.quantity,
+        unitPrice: line.product?.price ?? 0,
+        lineTotal: line.lineTotal,
       })),
       paymentMethod: form.paymentMethod,
       discount: Number(form.discount || 0),
