@@ -49,6 +49,12 @@ function fullName(person) {
   return `${person?.firstName ?? ""} ${person?.lastName ?? ""}`.trim();
 }
 
+function canCreateSales(currentUser) {
+  const permissions = new Set(currentUser.permissions ?? []);
+
+  return permissions.has("sales:create") || permissions.has("sales:manage");
+}
+
 function nextId(collection) {
   return collection.length > 0 ? Math.max(...collection.map((item) => item.id)) + 1 : 1;
 }
@@ -64,6 +70,9 @@ function validateClientEmployeePayment(payload, currentUser) {
   const employeeId = parsePositiveInteger(payload.employeeId);
   const paymentMethod = payload.paymentMethod?.trim() ?? "";
 
+  if (!canCreateSales(currentUser)) {
+    errors.employeeId = "El usuario no esta autorizado para registrar ventas.";
+  }
   if (!clientId) errors.clientId = "Seleccione un cliente.";
   if (!employeeId) errors.employeeId = "Seleccione un empleado.";
   if (!PAYMENT_METHODS.has(paymentMethod)) {
@@ -73,17 +82,25 @@ function validateClientEmployeePayment(payload, currentUser) {
   const client = clientId ? clientStore.findById(clientId) : null;
   const employee = employeeId ? employeeStore.findById(employeeId) : null;
 
-  if (clientId && (!client || client.status !== "active")) {
-    errors.clientId = "El cliente seleccionado no esta activo.";
+  if (clientId && !client) {
+    errors.clientId = "El cliente seleccionado no esta asociado al sistema.";
   }
-  if (employeeId && (!employee || employee.status !== "active")) {
+  if (client && client.status !== "active") {
+    errors.clientId = "El cliente asociado debe estar activo.";
+  }
+  if (employeeId && !employee) {
+    errors.employeeId = "El empleado seleccionado no existe.";
+  }
+  if (employee && employee.status !== "active") {
     errors.employeeId = "El empleado seleccionado no esta activo.";
   }
   if (currentUser.role === "employee") {
     const currentEmployee = employeeStore.findByUserId(currentUser.id);
 
-    if (currentEmployee && currentEmployee.id !== employeeId) {
-      errors.employeeId = "Solo puedes registrar ventas a tu nombre.";
+    if (!currentEmployee || currentEmployee.status !== "active") {
+      errors.employeeId = "El empleado de la sesion no esta autorizado.";
+    } else if (currentEmployee.id !== employeeId) {
+      errors.employeeId = "El empleado no esta autorizado para registrar ventas a nombre de otro empleado.";
     }
   }
 
@@ -103,8 +120,11 @@ function buildServiceSaleValidation(payload, currentUser) {
 
   const service = serviceId ? serviceStore.findById(serviceId) : null;
 
-  if (serviceId && (!service || service.status !== "active")) {
-    errors.serviceId = "El servicio seleccionado no esta activo.";
+  if (serviceId && !service) {
+    errors.serviceId = "El servicio seleccionado no existe.";
+  }
+  if (service && service.status !== "active") {
+    errors.serviceId = "El servicio seleccionado debe estar activo.";
   }
   if (service && Number.isFinite(discount) && discount > service.price) {
     errors.discount = "El descuento no puede superar el precio del servicio.";
@@ -175,8 +195,11 @@ function buildProductSaleValidation(payload, currentUser) {
 
   const linkedService = linkedServiceId ? serviceStore.findById(linkedServiceId) : null;
 
-  if (linkedServiceId && (!linkedService || linkedService.status !== "active")) {
-    errors.linkedServiceId = "El servicio ligado no esta activo.";
+  if (linkedServiceId && !linkedService) {
+    errors.linkedServiceId = "El servicio ligado no existe.";
+  }
+  if (linkedService && linkedService.status !== "active") {
+    errors.linkedServiceId = "El servicio ligado debe estar activo.";
   }
 
   quantitiesByProduct.forEach((quantity, productId) => {
