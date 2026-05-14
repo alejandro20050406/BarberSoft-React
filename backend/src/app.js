@@ -51,7 +51,7 @@ export function createApp() {
       return;
     }
 
-    const salesHandled = await handleSalesRoutes(request, response, pathname);
+    const salesHandled = await handleSalesRoutes(request, response, pathname, url.searchParams);
 
     if (salesHandled) {
       return;

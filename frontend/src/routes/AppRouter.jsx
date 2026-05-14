@@ -24,6 +24,7 @@ import ClientsPage from "../pages/admin/ClientsPage";
 import MySalesPage from "../pages/employee/MySalesPage";
 import CashClosingPage from "../pages/employee/CashClosingPage";
 import ProfilePage from "../pages/ProfilePage";
+import ProductSaleForm from "../features/sales/components/ProductSaleForm";
 import ServiceSaleForm from "../features/sales/components/ServiceSaleForm";
 
 export default function AppRouter() {
@@ -47,7 +48,7 @@ export default function AppRouter() {
           )}
         >
           <Route path={PATHS.admin} element={<AdminMenuPage />} />
-          <Route path={PATHS.adminSalesProduct} element={<div>Venta de Producto</div>} />
+          <Route path={PATHS.adminSalesProduct} element={<ProductSaleForm />} />
           <Route path={PATHS.adminSalesService} element={<ServiceSaleForm />} />
           <Route path={PATHS.adminSalesList} element={<div>Lista de Ventas</div>} />
           <Route path={PATHS.adminReports} element={<div>Reportes</div>} />
@@ -70,7 +71,7 @@ export default function AppRouter() {
           )}
         >
           <Route path={PATHS.employee} element={<EmployeeMenuPage />} />
-          <Route path={PATHS.employeeSalesProduct} element={<div>Venta de Producto</div>} />
+          <Route path={PATHS.employeeSalesProduct} element={<ProductSaleForm />} />
           <Route path={PATHS.employeeSalesService} element={<ServiceSaleForm />} />
           <Route path={PATHS.employeeMySales} element={<MySalesPage />} />
           <Route path={PATHS.employeeCashClosing} element={<CashClosingPage />} />

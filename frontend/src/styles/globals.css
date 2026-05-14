@@ -570,6 +570,10 @@ input, textarea, select {
   margin: var(--space-5) 0;
 }
 
+.employee-sales-summary {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .sale-summary > div {
   display: grid;
   gap: var(--space-1);
@@ -588,6 +592,46 @@ input, textarea, select {
 
 .sale-summary strong {
   overflow-wrap: anywhere;
+}
+
+.sale-lines-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+.sale-lines-header h2 {
+  margin-bottom: 0;
+}
+
+.product-sale-table {
+  min-width: 820px;
+}
+
+.product-sale-table .field {
+  min-width: 170px;
+}
+
+.quantity-field {
+  max-width: 110px;
+}
+
+.inline-error {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+}
+
+.sales-filter-actions {
+  margin-top: var(--space-4);
+}
+
+.commission-rate {
+  display: block;
+  margin-top: var(--space-1);
 }
 
 .status-pill {
