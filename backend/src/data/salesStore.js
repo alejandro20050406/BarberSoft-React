@@ -37,6 +37,10 @@ function money(value) {
   return Math.round(Number(value) * 100) / 100;
 }
 
+function sameMoney(left, right) {
+  return money(left) === money(right);
+}
+
 function normalizeDateFilter(value, boundary) {
   if (!value) return null;
 
@@ -152,6 +156,8 @@ function normalizeProductLines(payload) {
   return lines.map((line) => ({
     productId: parsePositiveInteger(line.productId),
     quantity: parsePositiveInteger(line.quantity),
+    unitPrice: line.unitPrice === undefined ? null : Number(line.unitPrice),
+    lineTotal: line.lineTotal === undefined ? null : Number(line.lineTotal),
   }));
 }
 
@@ -181,10 +187,23 @@ function buildProductSaleValidation(payload, currentUser) {
 
     const product = line.productId ? productStore.findById(line.productId) : null;
 
-    if (line.productId && (!product || product.status !== "active")) {
+    if (line.productId && !product) {
+      errors[`lineItems.${index}.productId`] = "El producto seleccionado no existe.";
+    }
+    if (product && product.status !== "active") {
       errors[`lineItems.${index}.productId`] = "El producto seleccionado no esta activo.";
     }
     if (product && line.quantity) {
+      const expectedUnitPrice = money(product.price);
+      const expectedLineTotal = money(product.price * line.quantity);
+
+      if (!Number.isFinite(line.unitPrice) || !sameMoney(line.unitPrice, expectedUnitPrice)) {
+        errors[`lineItems.${index}.unitPrice`] = "El precio unitario no coincide con el producto.";
+      }
+      if (!Number.isFinite(line.lineTotal) || !sameMoney(line.lineTotal, expectedLineTotal)) {
+        errors[`lineItems.${index}.lineTotal`] = "El subtotal de la linea no coincide con cantidad y precio.";
+      }
+
       productLines.push({ ...line, product });
       quantitiesByProduct.set(
         product.id,
