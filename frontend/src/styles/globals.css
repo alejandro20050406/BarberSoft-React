@@ -505,6 +505,11 @@ input, textarea, select {
   border: var(--border-thin);
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .button-danger {
   color: var(--color-text);
   background: var(--color-danger);
@@ -558,6 +563,10 @@ input, textarea, select {
   color: var(--color-danger);
 }
 
+.warning-text {
+  color: var(--color-warning);
+}
+
 .success-text {
   color: var(--color-success);
   font-size: var(--text-sm);
@@ -604,6 +613,18 @@ input, textarea, select {
 
 .sale-lines-header h2 {
   margin-bottom: 0;
+}
+
+.inventory-caption,
+.inventory-note {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.inventory-caption strong {
+  color: var(--color-text);
 }
 
 .product-sale-table {
