@@ -12,7 +12,17 @@ function sendStoreResult(response, result) {
   });
 }
 
-export async function handleSalesRoutes(request, response, pathname) {
+function getSalesFilters(searchParams) {
+  const type = searchParams?.get("type") ?? "all";
+
+  return {
+    from: searchParams?.get("from") ?? "",
+    to: searchParams?.get("to") ?? "",
+    type: ["all", "service", "product"].includes(type) ? type : "all",
+  };
+}
+
+export async function handleSalesRoutes(request, response, pathname, searchParams = new URLSearchParams()) {
   const basePath = `${env.apiPrefix}/sales`;
 
   if (!pathname.startsWith(basePath)) {
@@ -28,8 +38,26 @@ export async function handleSalesRoutes(request, response, pathname) {
       return true;
     }
 
+    if (pathname === `${basePath}/my-sales` && request.method === "GET") {
+      sendStoreResult(response, salesStore.listAuthenticatedEmployeeSales(user, getSalesFilters(searchParams)));
+      return true;
+    }
+
+    if (pathname === `${basePath}/my-commissions` && request.method === "GET") {
+      sendStoreResult(
+        response,
+        salesStore.listAuthenticatedEmployeeCommissions(user, getSalesFilters(searchParams)),
+      );
+      return true;
+    }
+
     if (pathname === `${basePath}/service-sales` && request.method === "POST") {
       sendStoreResult(response, salesStore.createServiceSale(await readJsonBody(request), user));
+      return true;
+    }
+
+    if (pathname === `${basePath}/product-sales` && request.method === "POST") {
+      sendStoreResult(response, salesStore.createProductSale(await readJsonBody(request), user));
       return true;
     }
 

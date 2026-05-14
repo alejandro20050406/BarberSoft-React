@@ -105,6 +105,8 @@ function createProductStore(seed) {
       return { ok: true, status: 200, data };
     },
 
+    findById,
+
     create(payload) {
       const errors = validateProduct(payload, products);
 
@@ -152,6 +154,31 @@ function createProductStore(seed) {
       }
 
       const product = { ...currentProduct, status };
+      products = products.map((item) => (item.id === id ? product : item));
+
+      return { ok: true, status: 200, data: product };
+    },
+
+    decreaseStock(id, quantity) {
+      const currentProduct = findById(id);
+
+      if (!currentProduct) {
+        return makeError("Producto no encontrado.", {}, 404);
+      }
+
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        return makeError("Cantidad invalida.", { quantity: "Ingrese una cantidad mayor a 0." }, 422);
+      }
+
+      if (currentProduct.stock < quantity) {
+        return makeError(
+          "Stock insuficiente.",
+          { stock: `Solo hay ${currentProduct.stock} unidades disponibles.` },
+          409,
+        );
+      }
+
+      const product = { ...currentProduct, stock: currentProduct.stock - quantity };
       products = products.map((item) => (item.id === id ? product : item));
 
       return { ok: true, status: 200, data: product };
