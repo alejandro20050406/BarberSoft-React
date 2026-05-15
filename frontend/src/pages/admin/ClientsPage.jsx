@@ -46,6 +46,7 @@ export default function ClientsPage() {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [confirm, setConfirm] = useState(null);
+  const [cancelDialog, setCancelDialog] = useState(false);
   const [visitHistory, setVisitHistory] = useState(null);
   const [isLoadingVisits, setIsLoadingVisits] = useState(false);
   const [visitsError, setVisitsError] = useState("");
@@ -91,6 +92,15 @@ export default function ClientsPage() {
     setErrors({});
     setFormError("");
     setShowForm(false);
+  };
+
+  const requestCancelForm = () => {
+    setCancelDialog(true);
+  };
+
+  const applyCancelForm = () => {
+    setCancelDialog(false);
+    handleReset();
   };
 
   const applyStatusChange = async () => {
@@ -144,12 +154,19 @@ export default function ClientsPage() {
 
       {showForm && (
         <CatalogForm
-          title={editingId !== null ? "Editar cliente" : "Crear cliente"}
+          title={editingId !== null ? "Corregir cliente" : "Crear cliente"}
+          description={
+            editingId !== null
+              ? "Actualiza los datos del cliente sin afectar su historial de visitas."
+              : "Registra los datos principales para asociar ventas y visitas."
+          }
           errorMessage={formError}
           primaryLabel={editingId !== null ? "Guardar cambios" : "Guardar"}
+          cancelLabel={editingId !== null ? "Cancelar correccion" : "Cancelar"}
           isSaving={isSaving}
+          asDialog
           onSubmit={handleSubmit}
-          onCancel={handleReset}
+          onCancel={requestCancelForm}
         >
           <FormField label="Nombre" error={errors.firstName}>
             <input className="field" value={form.firstName} onChange={(event) => handleChange("firstName", event.target.value)} />
@@ -246,11 +263,40 @@ export default function ClientsPage() {
 
       <ConfirmDialog
         isOpen={Boolean(confirm)}
-        title="Confirmar cambio"
-        message={`Se cambiara el estado de "${confirm?.name}".`}
-        confirmLabel="Si, continuar"
+        title={confirm?.nextStatus === "inactive" ? "Desactivar cliente" : "Activar cliente"}
+        message={
+          confirm?.nextStatus === "inactive"
+            ? `Se dara de baja logica a "${confirm?.name}".`
+            : `Se reactivara a "${confirm?.name}".`
+        }
+        details={
+          confirm?.nextStatus === "inactive"
+            ? [
+                "No se eliminara su historial de visitas.",
+                "No aparecera como cliente activo para nuevas ventas.",
+                "Podras activarlo nuevamente desde esta pantalla.",
+              ]
+            : ["El cliente volvera a estar disponible para ventas y visitas."]
+        }
+        variant={confirm?.nextStatus === "inactive" ? "danger" : "info"}
+        confirmLabel={confirm?.nextStatus === "inactive" ? "Desactivar" : "Activar"}
         onCancel={() => setConfirm(null)}
         onConfirm={applyStatusChange}
+      />
+
+      <ConfirmDialog
+        isOpen={cancelDialog}
+        title={editingId !== null ? "Cancelar correccion" : "Cancelar registro"}
+        message="Los datos capturados en el formulario se descartaran."
+        details={[
+          "No se guardara ningun cambio.",
+          "Puedes volver a abrir el formulario si necesitas continuar.",
+        ]}
+        variant="info"
+        confirmLabel="Descartar"
+        cancelLabel="Volver al formulario"
+        onCancel={() => setCancelDialog(false)}
+        onConfirm={applyCancelForm}
       />
 
       {visitHistory ? (

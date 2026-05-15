@@ -250,9 +250,23 @@ export default function CategoryCatalog({ title, service }) {
 
       <ConfirmDialog
         isOpen={Boolean(confirm)}
-        title="Confirmar cambio"
-        message={`Se cambiara el estado de "${confirm?.name}".`}
-        confirmLabel="Si, continuar"
+        title={confirm?.nextStatus === "inactive" ? "Desactivar categoria" : "Activar categoria"}
+        message={
+          confirm?.nextStatus === "inactive"
+            ? `Se dara de baja logica a "${confirm?.name}".`
+            : `Se reactivara "${confirm?.name}".`
+        }
+        details={
+          confirm?.nextStatus === "inactive"
+            ? [
+                "No se eliminara la categoria del historial.",
+                "Dejara de estar disponible para nuevos registros.",
+                "Podras activarla nuevamente si se necesita.",
+              ]
+            : ["La categoria volvera a estar disponible para nuevos registros."]
+        }
+        variant={confirm?.nextStatus === "inactive" ? "danger" : "info"}
+        confirmLabel={confirm?.nextStatus === "inactive" ? "Desactivar" : "Activar"}
         onCancel={() => setConfirm(null)}
         onConfirm={applyStatusChange}
       />
