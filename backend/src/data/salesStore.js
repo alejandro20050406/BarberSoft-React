@@ -315,6 +315,50 @@ function enrichSale(sale) {
   };
 }
 
+function enrichVisit(visit) {
+  const sale = sales.find((item) => item.id === visit.saleId) ?? null;
+  const employee = employeeStore.findById(visit.employeeId);
+  const service = serviceStore.findById(visit.serviceId);
+
+  return {
+    ...visit,
+    service: service
+      ? {
+          id: service.id,
+          name: service.name,
+          category: service.category,
+          price: service.price,
+        }
+      : null,
+    employee: employee
+      ? {
+          id: employee.id,
+          name: fullName(employee),
+        }
+      : null,
+    sale: sale
+      ? {
+          id: sale.id,
+          folio: sale.folio,
+          total: sale.total,
+          paymentMethod: sale.paymentMethod,
+          paymentMethodLabel: PAYMENT_METHOD_LABELS[sale.paymentMethod] ?? sale.paymentMethod,
+        }
+      : null,
+  };
+}
+
+function getClientVisitSummary(clientId) {
+  const clientVisits = visits
+    .filter((visit) => visit.clientId === clientId)
+    .sort((a, b) => new Date(b.visitedAt) - new Date(a.visitedAt));
+
+  return {
+    visitCount: clientVisits.length,
+    lastVisitAt: clientVisits[0]?.visitedAt ?? null,
+  };
+}
+
 function filterEmployeeSales(employeeId, filters = {}) {
   const type = filters.type ?? "all";
   const fromDate = normalizeDateFilter(filters.from, "00:00:00.000");
@@ -386,6 +430,31 @@ export const salesStore = {
           { value: "transfer", label: "Transferencia" },
           { value: "mixed", label: "Mixto" },
         ],
+      },
+    };
+  },
+
+  getClientVisitSummary,
+
+  listClientVisits(clientId) {
+    const client = clientStore.findById(clientId);
+
+    if (!client) {
+      return makeError("Cliente no encontrado.", {}, 404);
+    }
+
+    const clientVisits = visits
+      .filter((visit) => visit.clientId === clientId)
+      .sort((a, b) => new Date(b.visitedAt) - new Date(a.visitedAt))
+      .map(enrichVisit);
+
+    return {
+      ok: true,
+      status: 200,
+      data: {
+        client,
+        visitCount: clientVisits.length,
+        visits: clientVisits,
       },
     };
   },
