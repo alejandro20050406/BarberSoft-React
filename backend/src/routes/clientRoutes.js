@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { clientStore } from "../data/clientStore.js";
+import { salesStore } from "../data/salesStore.js";
 import { readJsonBody, sendJson } from "../utils/http.js";
 
 function parseClientRoute(pathname) {
@@ -33,6 +34,13 @@ function sendStoreResult(response, result) {
   });
 }
 
+function withVisitSummary(client) {
+  return {
+    ...client,
+    ...salesStore.getClientVisitSummary(client.id),
+  };
+}
+
 export async function handleClientRoutes(request, response, pathname, searchParams) {
   const route = parseClientRoute(pathname);
 
@@ -42,13 +50,20 @@ export async function handleClientRoutes(request, response, pathname, searchPara
 
   try {
     if (request.method === "GET" && route.id === undefined) {
-      sendStoreResult(
-        response,
-        clientStore.list({
-          query: searchParams.get("query") ?? "",
-          status: searchParams.get("status") ?? "all",
-        }),
-      );
+      const result = clientStore.list({
+        query: searchParams.get("query") ?? "",
+        status: searchParams.get("status") ?? "all",
+      });
+
+      sendStoreResult(response, {
+        ...result,
+        data: result.data.map(withVisitSummary),
+      });
+      return true;
+    }
+
+    if (request.method === "GET" && route.id !== undefined && route.action === "visits") {
+      sendStoreResult(response, salesStore.listClientVisits(route.id));
       return true;
     }
 
