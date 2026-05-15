@@ -239,9 +239,23 @@ export default function EmployeesPage() {
 
       <ConfirmDialog
         isOpen={Boolean(confirm)}
-        title="Confirmar cambio"
-        message={`Se cambiara el estado de "${confirm?.name}".`}
-        confirmLabel="Si, continuar"
+        title={confirm?.nextStatus === "inactive" ? "Desactivar empleado" : "Activar empleado"}
+        message={
+          confirm?.nextStatus === "inactive"
+            ? `Se dara de baja logica a "${confirm?.name}".`
+            : `Se reactivara a "${confirm?.name}".`
+        }
+        details={
+          confirm?.nextStatus === "inactive"
+            ? [
+                "El empleado no estara disponible para registrar ventas nuevas.",
+                "Sus ventas, comisiones e historial se conservaran.",
+                "Podras activarlo nuevamente si vuelve a operar.",
+              ]
+            : ["El empleado volvera a estar disponible para ventas nuevas."]
+        }
+        variant={confirm?.nextStatus === "inactive" ? "danger" : "info"}
+        confirmLabel={confirm?.nextStatus === "inactive" ? "Desactivar" : "Activar"}
         onCancel={() => setConfirm(null)}
         onConfirm={applyStatusChange}
       />

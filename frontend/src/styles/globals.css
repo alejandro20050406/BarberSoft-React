@@ -453,6 +453,12 @@ input, textarea, select {
   text-transform: uppercase;
 }
 
+.form-description {
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 .field-group small,
 .form-error {
   color: var(--color-danger);
@@ -692,6 +698,40 @@ input, textarea, select {
 
 .confirm-dialog {
   width: min(420px, 100%);
+  padding: var(--space-6);
+  background: var(--color-bg-card);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+}
+
+.confirm-dialog-danger {
+  border-color: var(--color-danger);
+}
+
+.confirm-dialog-info {
+  border-color: var(--color-info);
+}
+
+.dialog-detail-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-5);
+  padding-left: var(--space-4);
+  color: var(--color-text-soft);
+  list-style: disc;
+}
+
+.dialog-detail-list li {
+  line-height: var(--leading-normal);
+}
+
+.correction-dialog {
+  display: grid;
+  width: min(760px, 100%);
+  max-height: min(720px, 92vh);
+  gap: var(--space-4);
+  overflow: auto;
   padding: var(--space-6);
   background: var(--color-bg-card);
   border: var(--border-thin);

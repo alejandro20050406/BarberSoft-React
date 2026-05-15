@@ -24,6 +24,7 @@ export default function ProductsPage() {
   const [errors, setErrors] = useState({});
   const [filters, setFilters] = useState({ query: "", category: "all", status: "all" });
   const [confirm, setConfirm] = useState(null);
+  const [cancelDialog, setCancelDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [requestError, setRequestError] = useState("");
@@ -145,6 +146,15 @@ export default function ProductsPage() {
     setShowForm(false);
   };
 
+  const requestCancelForm = () => {
+    setCancelDialog(true);
+  };
+
+  const applyCancelForm = () => {
+    setCancelDialog(false);
+    handleReset();
+  };
+
   const applyStatusChange = async () => {
     if (!confirm) return;
 
@@ -182,12 +192,19 @@ export default function ProductsPage() {
 
       {showForm && (
         <CatalogForm
-          title={editingId !== null ? "Editar producto" : "Nuevo producto"}
+          title={editingId !== null ? "Corregir producto" : "Nuevo producto"}
+          description={
+            editingId !== null
+              ? "Corrige los datos de inventario, costos y precio usados en ventas futuras."
+              : "Agrega un producto activo al inventario."
+          }
           errorMessage={formError}
           primaryLabel={editingId !== null ? "Guardar cambios" : "Agregar producto"}
+          cancelLabel={editingId !== null ? "Cancelar correccion" : "Cancelar"}
           isSaving={isSaving}
+          asDialog
           onSubmit={handleSubmit}
-          onCancel={handleReset}
+          onCancel={requestCancelForm}
         >
           <FormField label="Categoria" error={errors.category}>
             <select
@@ -296,11 +313,40 @@ export default function ProductsPage() {
 
       <ConfirmDialog
         isOpen={Boolean(confirm)}
-        title="Confirmar cambio"
-        message={`Se cambiara el estado de "${confirm?.name}".`}
-        confirmLabel="Si, continuar"
+        title={confirm?.nextStatus === "inactive" ? "Desactivar producto" : "Activar producto"}
+        message={
+          confirm?.nextStatus === "inactive"
+            ? `Se dara de baja logica a "${confirm?.name}".`
+            : `Se reactivara "${confirm?.name}".`
+        }
+        details={
+          confirm?.nextStatus === "inactive"
+            ? [
+                "El producto dejara de aparecer en ventas nuevas.",
+                "No se eliminara su informacion de inventario.",
+                "El historial de ventas conservara sus datos.",
+              ]
+            : ["El producto volvera a estar disponible para ventas nuevas."]
+        }
+        variant={confirm?.nextStatus === "inactive" ? "danger" : "info"}
+        confirmLabel={confirm?.nextStatus === "inactive" ? "Desactivar" : "Activar"}
         onCancel={() => setConfirm(null)}
         onConfirm={applyStatusChange}
+      />
+
+      <ConfirmDialog
+        isOpen={cancelDialog}
+        title={editingId !== null ? "Cancelar correccion" : "Cancelar registro"}
+        message="Los datos capturados en el formulario se descartaran."
+        details={[
+          "No se guardara ningun cambio de inventario.",
+          "Puedes volver a abrir el formulario si necesitas continuar.",
+        ]}
+        variant="info"
+        confirmLabel="Descartar"
+        cancelLabel="Volver al formulario"
+        onCancel={() => setCancelDialog(false)}
+        onConfirm={applyCancelForm}
       />
     </div>
   );
