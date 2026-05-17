@@ -5,6 +5,7 @@ const SALE_TYPES = {
   all: "Todas",
   service: "Servicios",
   product: "Productos",
+  mixed: "Mixtas",
 };
 
 const formatCurrency = (value) =>

@@ -4,6 +4,7 @@ export const PATHS = {
   employeeLogin: "/login/empleado",
 
   admin: "/admin",
+  adminSale: "/admin/ventas",
   adminSalesProduct: "/admin/ventas/producto",
   adminSalesService: "/admin/ventas/servicio",
   adminSalesList: "/admin/ventas/lista",
@@ -18,6 +19,7 @@ export const PATHS = {
   adminProfile: "/admin/perfil",
 
   employee: "/empleado",
+  employeeSale: "/empleado/ventas",
   employeeSalesProduct: "/empleado/ventas/producto",
   employeeSalesService: "/empleado/ventas/servicio",
   employeeMySales: "/empleado/mis-ventas",

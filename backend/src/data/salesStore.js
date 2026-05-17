@@ -55,6 +55,10 @@ function fullName(person) {
   return `${person?.firstName ?? ""} ${person?.lastName ?? ""}`.trim();
 }
 
+function normalize(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function canCreateSales(currentUser) {
   const permissions = new Set(currentUser.permissions ?? []);
 
@@ -161,6 +165,26 @@ function normalizeProductLines(payload) {
     unitPrice: line.unitPrice === undefined ? null : Number(line.unitPrice),
     lineTotal: line.lineTotal === undefined ? null : Number(line.lineTotal),
   }));
+}
+
+function normalizeSaleLines(payload) {
+  const lines = Array.isArray(payload.lineItems) ? payload.lineItems : [];
+
+  return lines.map((line) => ({
+    itemType: line.itemType === "service" ? "service" : line.itemType === "product" ? "product" : "",
+    itemId: parsePositiveInteger(line.itemId),
+    quantity: parsePositiveInteger(line.quantity),
+    unitPrice: line.unitPrice === undefined ? null : Number(line.unitPrice),
+    lineTotal: line.lineTotal === undefined ? null : Number(line.lineTotal),
+  }));
+}
+
+function parseSaleDate(value) {
+  if (!value) return new Date();
+
+  const date = new Date(`${value}T12:00:00.000`);
+
+  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 function buildProductSaleValidation(payload, currentUser) {
@@ -317,6 +341,95 @@ function enrichSale(sale) {
   };
 }
 
+function buildUnifiedSaleValidation(payload, currentUser) {
+  const baseValidation = validateClientEmployeePayment(payload, currentUser);
+  const errors = { ...baseValidation.errors };
+  const discount = Number(payload.discount ?? 0);
+  const normalizedLines = normalizeSaleLines(payload);
+  const saleLines = [];
+  const stockMovements = new Map();
+
+  if (!Number.isFinite(discount) || discount < 0) {
+    errors.discount = "Ingrese un descuento valido.";
+  }
+  if (normalizedLines.length === 0) {
+    errors.lineItems = "Agregue al menos un item a la venta.";
+  }
+
+  normalizedLines.forEach((line, index) => {
+    if (!line.itemType) {
+      errors[`lineItems.${index}.itemType`] = "Seleccione producto o servicio.";
+    }
+    if (!line.itemId) {
+      errors[`lineItems.${index}.itemId`] = "Seleccione un item.";
+    }
+    if (!line.quantity) {
+      errors[`lineItems.${index}.quantity`] = "Ingrese una cantidad mayor a 0.";
+    }
+
+    const product = line.itemType === "product" && line.itemId ? productStore.findById(line.itemId) : null;
+    const service = line.itemType === "service" && line.itemId ? serviceStore.findById(line.itemId) : null;
+    const item = product ?? service;
+
+    if (line.itemId && !item) {
+      errors[`lineItems.${index}.itemId`] = "El item seleccionado no existe.";
+    }
+    if (item && item.status !== "active") {
+      errors[`lineItems.${index}.itemId`] = "El item seleccionado no esta activo.";
+    }
+
+    if (item && line.quantity) {
+      const price = product ? product.price : service.price;
+      const expectedUnitPrice = money(price);
+      const expectedLineTotal = money(price * line.quantity);
+
+      if (!Number.isFinite(line.unitPrice) || !sameMoney(line.unitPrice, expectedUnitPrice)) {
+        errors[`lineItems.${index}.unitPrice`] = "El precio unitario no coincide con el item.";
+      }
+      if (!Number.isFinite(line.lineTotal) || !sameMoney(line.lineTotal, expectedLineTotal)) {
+        errors[`lineItems.${index}.lineTotal`] = "El subtotal no coincide con cantidad y precio.";
+      }
+
+      if (product) {
+        stockMovements.set(product.id, (stockMovements.get(product.id) ?? 0) + line.quantity);
+      }
+
+      saleLines.push({ ...line, product, service, unitPrice: expectedUnitPrice, lineTotal: expectedLineTotal });
+    }
+  });
+
+  stockMovements.forEach((quantity, productId) => {
+    const product = productStore.findById(productId);
+
+    if (product && product.stock < quantity) {
+      errors.lineItems = `Stock insuficiente para ${product.brand} ${product.model}. Disponible: ${product.stock}.`;
+    }
+  });
+
+  const subtotal = money(saleLines.reduce((total, line) => total + line.lineTotal, 0));
+
+  if (Number.isFinite(discount) && discount > subtotal) {
+    errors.discount = "El descuento no puede superar el total de la venta.";
+  }
+
+  return {
+    errors,
+    data: {
+      client: baseValidation.client,
+      employee: baseValidation.employee,
+      saleLines,
+      stockMovements: [...stockMovements.entries()].map(([productId, quantity]) => ({
+        productId,
+        quantity,
+      })),
+      paymentMethod: baseValidation.paymentMethod,
+      discount: money(discount),
+      subtotal,
+      soldAt: parseSaleDate(payload.soldAt).toISOString(),
+    },
+  };
+}
+
 function enrichVisit(visit) {
   const sale = sales.find((item) => item.id === visit.saleId) ?? null;
   const employee = employeeStore.findById(visit.employeeId);
@@ -378,6 +491,38 @@ function filterEmployeeSales(employeeId, filters = {}) {
   });
 }
 
+function canAccessSale(sale, currentUser) {
+  if (currentUser.role === "admin") return true;
+
+  const employee = employeeStore.findByUserId(currentUser.id);
+
+  return Boolean(employee && sale.employeeId === employee.id);
+}
+
+function filterSalesForUser(currentUser, filters = {}) {
+  const query = normalize(filters.query ?? "");
+  const fromDate = normalizeDateFilter(filters.from, "00:00:00.000");
+  const toDate = normalizeDateFilter(filters.to, "23:59:59.999");
+
+  return sales.filter((sale) => {
+    if (!canAccessSale(sale, currentUser)) return false;
+
+    const soldAt = new Date(sale.soldAt);
+    const enriched = enrichSale(sale);
+    const detailText = getSaleDetails(sale.id).map((detail) => detail.itemName).join(" ");
+    const matchesQuery =
+      !query ||
+      normalize(sale.folio).includes(query) ||
+      normalize(enriched.client?.name).includes(query) ||
+      normalize(enriched.employee?.name).includes(query) ||
+      normalize(detailText).includes(query);
+    const matchesFrom = !fromDate || soldAt >= fromDate;
+    const matchesTo = !toDate || soldAt <= toDate;
+
+    return matchesQuery && matchesFrom && matchesTo;
+  });
+}
+
 function buildSalesTotals(filteredSales) {
   const totals = filteredSales.reduce(
     (summary, sale) => {
@@ -410,6 +555,23 @@ function buildSalesTotals(filteredSales) {
   return totals;
 }
 
+function buildSalesSummary(filteredSales) {
+  const today = new Date().toISOString().slice(0, 10);
+  const month = today.slice(0, 7);
+  const todaySales = filteredSales.filter((sale) => sale.soldAt.slice(0, 10) === today);
+  const monthSales = filteredSales.filter((sale) => sale.soldAt.slice(0, 7) === month);
+  const uniqueTodayClients = new Set(todaySales.map((sale) => sale.clientId));
+  const total = money(filteredSales.reduce((sum, sale) => sum + sale.total, 0));
+
+  return {
+    todaySales: todaySales.length,
+    todayTotal: money(todaySales.reduce((sum, sale) => sum + sale.total, 0)),
+    todayClients: uniqueTodayClients.size,
+    averageTicket: filteredSales.length > 0 ? money(total / filteredSales.length) : 0,
+    monthIncome: money(monthSales.reduce((sum, sale) => sum + sale.total, 0)),
+  };
+}
+
 export const salesStore = {
   getOptions(currentUser) {
     const clients = clientStore.list({ status: "active" }).data;
@@ -439,6 +601,57 @@ export const salesStore = {
   },
 
   getClientVisitSummary,
+
+  listSales(currentUser, filters = {}) {
+    const filteredSales = [...filterSalesForUser(currentUser, filters)].sort(
+      (a, b) => new Date(b.soldAt) - new Date(a.soldAt),
+    );
+
+    return {
+      ok: true,
+      status: 200,
+      data: {
+        sales: filteredSales.map(enrichSale),
+        totals: buildSalesTotals(filteredSales),
+        summary: buildSalesSummary(filteredSales),
+        filters: {
+          query: filters.query ?? "",
+          from: filters.from ?? "",
+          to: filters.to ?? "",
+        },
+      },
+    };
+  },
+
+  getSale(id, currentUser) {
+    const sale = sales.find((item) => item.id === id);
+
+    if (!sale || !canAccessSale(sale, currentUser)) {
+      return makeError("Venta no encontrada.", {}, 404);
+    }
+
+    return { ok: true, status: 200, data: enrichSale(sale) };
+  },
+
+  deleteSale(id, currentUser) {
+    const sale = sales.find((item) => item.id === id);
+
+    if (!sale || !canAccessSale(sale, currentUser)) {
+      return makeError("Venta no encontrada.", {}, 404);
+    }
+
+    sales = sales.filter((item) => item.id !== id);
+    saleDetails = saleDetails.filter((detail) => detail.saleId !== id);
+    visits = visits.filter((visit) => visit.saleId !== id);
+    commissions = commissions.filter((commission) => commission.saleId !== id);
+
+    return {
+      ok: true,
+      status: 200,
+      data: { id },
+      message: "Venta eliminada correctamente.",
+    };
+  },
 
   listClientVisits(clientId) {
     const client = clientStore.findById(clientId);
@@ -623,6 +836,116 @@ export const salesStore = {
         stockMovements: stockResults.map((result) => result.data),
       },
       message: "Venta de producto registrada y stock actualizado correctamente.",
+    };
+  },
+
+  createSale(payload, currentUser) {
+    const validation = buildUnifiedSaleValidation(payload, currentUser);
+
+    if (Object.keys(validation.errors).length > 0) {
+      return makeError("No se pudo registrar la venta.", validation.errors, 422);
+    }
+
+    const {
+      client,
+      employee,
+      saleLines,
+      stockMovements,
+      paymentMethod,
+      discount,
+      subtotal,
+      soldAt,
+    } = validation.data;
+    const total = money(subtotal - discount);
+    const serviceSubtotal = money(
+      saleLines.reduce((sum, line) => sum + (line.itemType === "service" ? line.lineTotal : 0), 0),
+    );
+    const saleId = nextId(sales);
+    const firstDetailId = nextId(saleDetails);
+    const firstVisitId = nextId(visits);
+    const stockResults = stockMovements.map((movement) =>
+      productStore.decreaseStock(movement.productId, movement.quantity),
+    );
+    const failedStockUpdate = stockResults.find((result) => !result.ok);
+
+    if (failedStockUpdate) {
+      return failedStockUpdate;
+    }
+
+    const type = saleLines.every((line) => line.itemType === "service")
+      ? "service"
+      : saleLines.every((line) => line.itemType === "product")
+        ? "product"
+        : "mixed";
+    const sale = {
+      id: saleId,
+      folio: nextFolio(soldAt, type === "product" ? "PROD" : type === "service" ? "SERV" : "VENT"),
+      type,
+      clientId: client.id,
+      employeeId: employee.id,
+      userId: currentUser.id,
+      subtotal,
+      discount,
+      total,
+      paymentMethod,
+      status: "completed",
+      soldAt,
+      notes: payload.notes?.trim() ?? "",
+    };
+    const details = saleLines.map((line, index) => ({
+      id: firstDetailId + index,
+      saleId,
+      itemType: line.itemType,
+      serviceId: line.service?.id ?? null,
+      productId: line.product?.id ?? null,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      lineTotal: line.lineTotal,
+    }));
+    const serviceVisits = saleLines
+      .filter((line) => line.itemType === "service")
+      .map((line, index) => ({
+        id: firstVisitId + index,
+        saleId,
+        clientId: client.id,
+        employeeId: employee.id,
+        serviceId: line.service.id,
+        visitedAt: soldAt,
+        notes: payload.notes?.trim() ?? "",
+      }));
+    const commission = {
+      id: nextId(commissions),
+      saleId,
+      employeeId: employee.id,
+      percentage: serviceSubtotal > 0 ? SERVICE_EMPLOYEE_PERCENTAGE : employee.commissionRate,
+      amount:
+        serviceSubtotal > 0
+          ? money((serviceSubtotal * SERVICE_EMPLOYEE_PERCENTAGE) / 100)
+          : money((total * employee.commissionRate) / 100),
+      adminPercentage: serviceSubtotal > 0 ? SERVICE_ADMIN_PERCENTAGE : 0,
+      adminAmount: serviceSubtotal > 0 ? money((serviceSubtotal * SERVICE_ADMIN_PERCENTAGE) / 100) : 0,
+      status: "pending",
+      generatedAt: soldAt,
+    };
+
+    sales = [...sales, sale];
+    saleDetails = [...saleDetails, ...details];
+    visits = [...visits, ...serviceVisits];
+    commissions = [...commissions, commission];
+
+    return {
+      ok: true,
+      status: 201,
+      data: {
+        sale,
+        details,
+        visits: serviceVisits,
+        commission,
+        client,
+        employee,
+        stockMovements: stockResults.map((result) => result.data),
+      },
+      message: "Venta registrada correctamente.",
     };
   },
 
