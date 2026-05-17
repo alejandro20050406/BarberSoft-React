@@ -57,6 +57,7 @@ export default function MySalesPage() {
     discount: 0,
     total: 0,
     commission: 0,
+    adminProfit: 0,
     services: 0,
     products: 0,
   });
@@ -192,8 +193,12 @@ export default function MySalesPage() {
           <strong>{formatCurrency(totals.total)}</strong>
         </div>
         <div>
-          <span>Comisiones</span>
+          <span>Ganancia empleado</span>
           <strong>{formatCurrency(totals.commission)}</strong>
+        </div>
+        <div>
+          <span>Ganancia admin</span>
+          <strong>{formatCurrency(totals.adminProfit)}</strong>
         </div>
         <div>
           <span>Servicios</span>
@@ -238,7 +243,7 @@ export default function MySalesPage() {
                   <th>Detalle</th>
                   <th>Pago</th>
                   <th>Total</th>
-                  <th>Comision</th>
+                  <th>Ganancia empleado</th>
                 </tr>
               </thead>
               <tbody>

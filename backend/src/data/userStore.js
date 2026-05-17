@@ -24,7 +24,7 @@ const usersSeed = [
   {
     id: 2,
     username: "juan",
-    password: "1234",
+    password: "123456",
     role: "employee",
     name: "Juan Perez",
     email: "juan@barbersoft.local",
@@ -56,6 +56,7 @@ function createUserStore(seed) {
   const findById = (id) => users.find((user) => user.id === id);
   const findByUsername = (username) =>
     users.find((user) => normalize(user.username) === normalize(username));
+  const nextId = () => (users.length > 0 ? Math.max(...users.map((user) => user.id)) + 1 : 1);
 
   return {
     authenticate(payload) {
@@ -99,6 +100,57 @@ function createUserStore(seed) {
       }
 
       return user;
+    },
+
+    syncEmployeeAccount(employee) {
+      const username = employee.username?.trim() ?? "";
+      const password = employee.password?.trim() ?? "";
+
+      if (!username || !password) {
+        return makeError("Usuario y contrasena del empleado son obligatorios.", {}, 422);
+      }
+
+      const duplicatedUser = users.find(
+        (user) =>
+          normalize(user.username) === normalize(username) &&
+          user.id !== employee.userId,
+      );
+
+      if (duplicatedUser) {
+        return makeError("Ya existe un usuario con ese nombre de acceso.", { username: "Usuario duplicado." }, 422);
+      }
+
+      const currentUser = employee.userId ? findById(employee.userId) : null;
+      const userPayload = {
+        username,
+        password,
+        role: "employee",
+        name: `${employee.firstName} ${employee.lastName}`.trim(),
+        email: employee.email,
+        phone: employee.phone,
+        status: employee.status,
+        permissions: ["dashboard:read", "sales:create", "sales:own:read", "cash:close"],
+      };
+
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          ...userPayload,
+        };
+
+        users = users.map((user) => (user.id === currentUser.id ? updatedUser : user));
+
+        return { ok: true, status: 200, data: toSessionUser(updatedUser) };
+      }
+
+      const user = {
+        id: nextId(),
+        ...userPayload,
+      };
+
+      users = [...users, user];
+
+      return { ok: true, status: 201, data: toSessionUser(user) };
     },
 
     getProfile(userId) {

@@ -9,6 +9,10 @@ const EMPTY_FORM = {
   discount: "0",
   notes: "",
 };
+const SERVICE_EMPLOYEE_PERCENTAGE = 80;
+const SERVICE_ADMIN_PERCENTAGE = 20;
+
+const money = (value) => Math.round(Number(value) * 100) / 100;
 
 export function useServiceSale() {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -91,6 +95,8 @@ export function useServiceSale() {
   const subtotal = selectedService?.price ?? 0;
   const discount = Number(form.discount || 0);
   const total = Math.max(subtotal - (Number.isFinite(discount) ? discount : 0), 0);
+  const employeeEarning = money((total * SERVICE_EMPLOYEE_PERCENTAGE) / 100);
+  const adminProfit = money((total * SERVICE_ADMIN_PERCENTAGE) / 100);
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -156,6 +162,8 @@ export function useServiceSale() {
     selectedService,
     subtotal,
     total,
+    employeeEarning,
+    adminProfit,
     updateField,
     resetForm,
     submit,

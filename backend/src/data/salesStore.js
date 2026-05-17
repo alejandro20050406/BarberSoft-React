@@ -10,6 +10,8 @@ const PAYMENT_METHOD_LABELS = {
   transfer: "Transferencia",
   mixed: "Mixto",
 };
+const SERVICE_EMPLOYEE_PERCENTAGE = 80;
+const SERVICE_ADMIN_PERCENTAGE = 20;
 
 let sales = [];
 let saleDetails = [];
@@ -388,6 +390,7 @@ function buildSalesTotals(filteredSales) {
         discount: money(summary.discount + sale.discount),
         total: money(summary.total + sale.total),
         commission: money(summary.commission + (commission?.amount ?? 0)),
+        adminProfit: money(summary.adminProfit + (commission?.adminAmount ?? 0)),
         services: summary.services + (saleType === "service" ? 1 : 0),
         products: summary.products + (saleType === "product" ? 1 : 0),
       };
@@ -398,6 +401,7 @@ function buildSalesTotals(filteredSales) {
       discount: 0,
       total: 0,
       commission: 0,
+      adminProfit: 0,
       services: 0,
       products: 0,
     },
@@ -507,8 +511,10 @@ export const salesStore = {
       id: nextId(commissions),
       saleId,
       employeeId: employee.id,
-      percentage: employee.commissionRate,
-      amount: money((total * employee.commissionRate) / 100),
+      percentage: SERVICE_EMPLOYEE_PERCENTAGE,
+      amount: money((total * SERVICE_EMPLOYEE_PERCENTAGE) / 100),
+      adminPercentage: SERVICE_ADMIN_PERCENTAGE,
+      adminAmount: money((total * SERVICE_ADMIN_PERCENTAGE) / 100),
       status: "pending",
       generatedAt: soldAt,
     };

@@ -1,3 +1,5 @@
+import { userStore } from "./userStore.js";
+
 const normalize = (value) => String(value ?? "").trim().toLowerCase();
 const VALID_STATUSES = new Set(["active", "inactive"]);
 
@@ -42,10 +44,12 @@ function validateEmployee(payload, employees, currentId = null) {
   const phone = payload.phone?.trim() ?? "";
   const email = payload.email?.trim() ?? "";
   const commissionRate = Number(payload.commissionRate ?? 0);
+  const password = payload.password?.trim() ?? "";
 
   if (!firstName) errors.firstName = "El nombre es obligatorio.";
   if (!lastName) errors.lastName = "El apellido es obligatorio.";
   if (!username) errors.username = "El usuario es obligatorio.";
+  if (!password && !currentId) errors.password = "La contrasena es obligatoria.";
   if (!phone) errors.phone = "El telefono es obligatorio.";
   if (email && !email.includes("@")) errors.email = "Ingrese un correo valido.";
   if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 100) {
@@ -84,6 +88,28 @@ function createEmployeeStore(seed) {
 
   const findById = (id) => employees.find((employee) => employee.id === id);
   const findByUserId = (userId) => employees.find((employee) => employee.userId === userId);
+  const syncEmployeeUser = (employee) => {
+    const userResult = userStore.syncEmployeeAccount(employee);
+
+    if (!userResult.ok) {
+      return { ok: false, employee, userResult };
+    }
+
+    return {
+      ok: true,
+      employee: {
+        ...employee,
+        userId: userResult.data.id,
+      },
+      userResult,
+    };
+  };
+
+  employees = employees.map((employee) => {
+    const syncResult = syncEmployeeUser(employee);
+
+    return syncResult.ok ? syncResult.employee : employee;
+  });
 
   return {
     list(filters = {}) {
@@ -118,7 +144,14 @@ function createEmployeeStore(seed) {
 
       const id =
         employees.length > 0 ? Math.max(...employees.map((employee) => employee.id)) + 1 : 1;
-      const employee = { id, userId: null, ...buildEmployee(payload) };
+      const employeeDraft = { id, userId: null, ...buildEmployee(payload) };
+      const syncResult = syncEmployeeUser(employeeDraft);
+
+      if (!syncResult.ok) {
+        return syncResult.userResult;
+      }
+
+      const employee = syncResult.employee;
       employees = [...employees, employee];
 
       return { ok: true, status: 201, data: employee };
@@ -137,7 +170,14 @@ function createEmployeeStore(seed) {
         return makeError("No se pudo actualizar el empleado.", errors, 422);
       }
 
-      const employee = buildEmployee(payload, currentEmployee);
+      const employeeDraft = buildEmployee(payload, currentEmployee);
+      const syncResult = syncEmployeeUser(employeeDraft);
+
+      if (!syncResult.ok) {
+        return syncResult.userResult;
+      }
+
+      const employee = syncResult.employee;
       employees = employees.map((item) => (item.id === id ? employee : item));
 
       return { ok: true, status: 200, data: employee };
@@ -155,9 +195,15 @@ function createEmployeeStore(seed) {
       }
 
       const employee = { ...currentEmployee, status };
-      employees = employees.map((item) => (item.id === id ? employee : item));
+      const syncResult = syncEmployeeUser(employee);
 
-      return { ok: true, status: 200, data: employee };
+      if (!syncResult.ok) {
+        return syncResult.userResult;
+      }
+
+      employees = employees.map((item) => (item.id === id ? syncResult.employee : item));
+
+      return { ok: true, status: 200, data: syncResult.employee };
     },
   };
 }
