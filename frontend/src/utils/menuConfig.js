@@ -4,8 +4,7 @@ import { PATHS } from "../routes/paths";
 
 export const adminMenu = [
   { label: "Inicio", path: PATHS.admin },
-  { label: "Venta Producto", path: PATHS.adminSalesProduct },
-  { label: "Venta Servicio", path: PATHS.adminSalesService },
+  { label: "Venta", path: PATHS.adminSale },
   { label: "Productos", path: PATHS.adminProducts },
   { label: "Servicios", path: PATHS.adminServices },
   { label: "Cat. Productos", path: PATHS.adminProductCategories },
@@ -18,8 +17,7 @@ export const adminMenu = [
 
 export const employeeMenu = [
   { label: "Inicio", path: PATHS.employee },
-  { label: "Venta Producto", path: PATHS.employeeSalesProduct },
-  { label: "Venta Servicio", path: PATHS.employeeSalesService },
+  { label: "Venta", path: PATHS.employeeSale },
   { label: "Mis Ventas", path: PATHS.employeeMySales },
   { label: "Corte de Caja", path: PATHS.employeeCashClosing },
   { label: "Perfil", path: PATHS.employeeProfile },
