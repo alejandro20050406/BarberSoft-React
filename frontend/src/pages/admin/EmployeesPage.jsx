@@ -19,6 +19,8 @@ const STATUS_LABELS = {
   inactive: "INACTIVO",
 };
 
+const buildEmptyForm = () => ({ ...EMPTY_FORM });
+
 export default function EmployeesPage() {
   const {
     employees,
@@ -32,7 +34,7 @@ export default function EmployeesPage() {
     updateEmployee,
     setEmployeeStatus,
   } = useEmployees();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(buildEmptyForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [errors, setErrors] = useState({});
@@ -60,6 +62,14 @@ export default function EmployeesPage() {
     handleReset();
   };
 
+  const handleNewEmployee = () => {
+    setForm(buildEmptyForm());
+    setEditingId(null);
+    setErrors({});
+    setApiMessage("");
+    setShowForm(true);
+  };
+
   const handleEdit = (employee) => {
     setEditingId(employee.id);
     setForm({
@@ -78,7 +88,7 @@ export default function EmployeesPage() {
   };
 
   const handleReset = () => {
-    setForm(EMPTY_FORM);
+    setForm(buildEmptyForm());
     setEditingId(null);
     setErrors({});
     setApiMessage("");
@@ -107,14 +117,14 @@ export default function EmployeesPage() {
           <h1>Empleados</h1>
         </div>
         {!showForm && (
-          <button className="button button-primary" type="button" onClick={() => setShowForm(true)}>
+          <button className="button button-primary" type="button" onClick={handleNewEmployee}>
             Nuevo empleado
           </button>
         )}
       </div>
 
       {showForm && (
-        <section className="panel">
+        <section className="panel" key={editingId ?? "new-employee"}>
           <h2>{editingId !== null ? "Editar empleado" : "Datos Personales"}</h2>
           <div className="form-grid">
             <FormField label="Nombre" error={errors.firstName}>
@@ -151,10 +161,23 @@ export default function EmployeesPage() {
           <h2>Cuenta de acceso</h2>
           <div className="form-grid">
             <FormField label="Usuario" error={errors.username}>
-              <input className="field" value={form.username} onChange={(event) => handleChange("username", event.target.value)} />
+              <input
+                className="field"
+                autoComplete="new-username"
+                name="employee-username"
+                value={form.username}
+                onChange={(event) => handleChange("username", event.target.value)}
+              />
             </FormField>
             <FormField label="Contrasena" error={errors.password}>
-              <input className="field" type="password" value={form.password} onChange={(event) => handleChange("password", event.target.value)} />
+              <input
+                className="field"
+                type="password"
+                autoComplete="new-password"
+                name="employee-password"
+                value={form.password}
+                onChange={(event) => handleChange("password", event.target.value)}
+              />
             </FormField>
           </div>
 
