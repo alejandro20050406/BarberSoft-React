@@ -29,6 +29,8 @@ export default function SaleForm({ embedded = false, onCancel, onSaved } = {}) {
     categoriesByType,
     total,
     employeeServiceEarning,
+    employeeProductCommission,
+    estimatedEmployeeCommission,
     adminServiceProfit,
     inventoryBlockingMessages,
     hasInventoryBlock,
@@ -223,8 +225,14 @@ export default function SaleForm({ embedded = false, onCancel, onSaved } = {}) {
               <FormField label="Total">
                 <input className="field" value={formatCurrency(total)} readOnly />
               </FormField>
-              <FormField label="Total empleado servicios (80%)">
+              <FormField label="Comision servicios">
                 <input className="field" value={formatCurrency(employeeServiceEarning)} readOnly />
+              </FormField>
+              <FormField label="Comision productos">
+                <input className="field" value={formatCurrency(employeeProductCommission)} readOnly />
+              </FormField>
+              <FormField label="Comision total estimada">
+                <input className="field" value={formatCurrency(estimatedEmployeeCommission)} readOnly />
               </FormField>
               <FormField label="Ganancia administrador (20%)">
                 <input className="field" value={formatCurrency(adminServiceProfit)} readOnly />

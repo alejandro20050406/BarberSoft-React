@@ -14,6 +14,59 @@ const toDateInputValue = (date) => {
 };
 
 const money = (value) => Math.round(Number(value) * 100) / 100;
+const toCents = (value) => Math.round(Number(value ?? 0) * 100);
+const centsToMoney = (value) => money(value / 100);
+
+const allocateDiscountCents = (subtotalsCents, discountCents) => {
+  const normalizedSubtotals = subtotalsCents.map((value) => Math.max(0, Number(value ?? 0)));
+  const totalCents = normalizedSubtotals.reduce((sum, value) => sum + value, 0);
+  const normalizedDiscount = Math.max(0, Math.min(Number(discountCents ?? 0), totalCents));
+
+  if (totalCents === 0 || normalizedDiscount === 0) {
+    return normalizedSubtotals.map(() => 0);
+  }
+
+  const allocations = normalizedSubtotals.map((subtotal, index) => {
+    if (subtotal === 0) {
+      return { index, subtotal, cents: 0, remainder: 0 };
+    }
+
+    const rawShare = (normalizedDiscount * subtotal) / totalCents;
+
+    return {
+      index,
+      subtotal,
+      cents: Math.floor(rawShare),
+      remainder: rawShare % 1,
+    };
+  });
+
+  let remaining = normalizedDiscount - allocations.reduce((sum, item) => sum + item.cents, 0);
+  const rankedAllocations = allocations
+    .filter((item) => item.subtotal > 0)
+    .sort((left, right) => {
+      if (right.remainder !== left.remainder) {
+        return right.remainder - left.remainder;
+      }
+
+      if (right.subtotal !== left.subtotal) {
+        return right.subtotal - left.subtotal;
+      }
+
+      return left.index - right.index;
+    });
+
+  for (let index = 0; index < rankedAllocations.length && remaining > 0; index += 1) {
+    rankedAllocations[index].cents += 1;
+    remaining -= 1;
+
+    if (index === rankedAllocations.length - 1 && remaining > 0) {
+      index = -1;
+    }
+  }
+
+  return allocations.sort((left, right) => left.index - right.index).map((item) => item.cents);
+};
 
 const buildEmptyForm = (options = {}) => ({
   clientId: "",
@@ -166,8 +219,22 @@ export function useSale() {
   const serviceTotal = money(
     lineItems.reduce((sum, line) => sum + (line.itemType === "service" ? line.lineTotal : 0), 0),
   );
-  const employeeServiceEarning = money((serviceTotal * SERVICE_EMPLOYEE_PERCENTAGE) / 100);
-  const adminServiceProfit = money((serviceTotal * SERVICE_ADMIN_PERCENTAGE) / 100);
+  const productTotal = money(
+    lineItems.reduce((sum, line) => sum + (line.itemType === "product" ? line.lineTotal : 0), 0),
+  );
+  const selectedEmployee = options.employees.find((employee) => employee.id === Number(form.employeeId)) ?? null;
+  const [serviceDiscountCents, productDiscountCents] = allocateDiscountCents(
+    [toCents(serviceTotal), toCents(productTotal)],
+    toCents(discount),
+  );
+  const netServiceTotal = centsToMoney(toCents(serviceTotal) - serviceDiscountCents);
+  const netProductTotal = centsToMoney(toCents(productTotal) - productDiscountCents);
+  const employeeServiceEarning = money((netServiceTotal * SERVICE_EMPLOYEE_PERCENTAGE) / 100);
+  const employeeProductCommission = money(
+    (netProductTotal * Number(selectedEmployee?.commissionRate ?? 0)) / 100,
+  );
+  const estimatedEmployeeCommission = money(employeeServiceEarning + employeeProductCommission);
+  const adminServiceProfit = money((netServiceTotal * SERVICE_ADMIN_PERCENTAGE) / 100);
   const inventoryBlockingMessages = [
     ...new Set(
       lineItems
@@ -327,7 +394,12 @@ export function useSale() {
     subtotal,
     total,
     serviceTotal,
+    productTotal,
+    netServiceTotal,
+    netProductTotal,
     employeeServiceEarning,
+    employeeProductCommission,
+    estimatedEmployeeCommission,
     adminServiceProfit,
     inventoryBlockingMessages,
     hasInventoryBlock,
