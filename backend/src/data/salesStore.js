@@ -43,6 +43,167 @@ function sameMoney(left, right) {
   return money(left) === money(right);
 }
 
+function toCents(value) {
+  return Math.round(Number(value ?? 0) * 100);
+}
+
+function centsToMoney(value) {
+  return money(value / 100);
+}
+
+function percentageAmountCents(baseCents, percentage) {
+  return Math.round((baseCents * Number(percentage ?? 0)) / 100);
+}
+
+function allocateDiscountCents(subtotalsCents, discountCents) {
+  const normalizedSubtotals = subtotalsCents.map((value) => Math.max(0, Number(value ?? 0)));
+  const totalCents = normalizedSubtotals.reduce((sum, value) => sum + value, 0);
+  const normalizedDiscount = Math.max(0, Math.min(Number(discountCents ?? 0), totalCents));
+
+  if (totalCents === 0 || normalizedDiscount === 0) {
+    return normalizedSubtotals.map(() => 0);
+  }
+
+  const allocations = normalizedSubtotals.map((subtotal, index) => {
+    if (subtotal === 0) {
+      return { index, subtotal, cents: 0, remainder: 0 };
+    }
+
+    const rawShare = (normalizedDiscount * subtotal) / totalCents;
+
+    return {
+      index,
+      subtotal,
+      cents: Math.floor(rawShare),
+      remainder: rawShare % 1,
+    };
+  });
+
+  let remaining = normalizedDiscount - allocations.reduce((sum, item) => sum + item.cents, 0);
+
+  allocations
+    .filter((item) => item.subtotal > 0)
+    .sort((left, right) => {
+      if (right.remainder !== left.remainder) {
+        return right.remainder - left.remainder;
+      }
+
+      if (right.subtotal !== left.subtotal) {
+        return right.subtotal - left.subtotal;
+      }
+
+      return left.index - right.index;
+    });
+
+  const rankedAllocations = allocations
+    .filter((item) => item.subtotal > 0)
+    .sort((left, right) => {
+      if (right.remainder !== left.remainder) {
+        return right.remainder - left.remainder;
+      }
+
+      if (right.subtotal !== left.subtotal) {
+        return right.subtotal - left.subtotal;
+      }
+
+      return left.index - right.index;
+    });
+
+  for (let index = 0; index < rankedAllocations.length && remaining > 0; index += 1) {
+    rankedAllocations[index].cents += 1;
+    remaining -= 1;
+
+    if (index === rankedAllocations.length - 1 && remaining > 0) {
+      index = -1;
+    }
+  }
+
+  return allocations
+    .sort((left, right) => left.index - right.index)
+    .map((item) => item.cents);
+}
+
+function parsePaginationValue(value, fallback, { min = 1, max = 100 } = {}) {
+  const number = Number(value);
+
+  if (!Number.isInteger(number)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, number));
+}
+
+function paginateCollection(collection, filters = {}) {
+  const page = parsePaginationValue(filters.page, 1);
+  const pageSize = parsePaginationValue(filters.pageSize, 10, { min: 1, max: 100 });
+  const totalItems = collection.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const items = collection.slice(start, start + pageSize);
+
+  return {
+    items,
+    pagination: {
+      page: currentPage,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasPreviousPage: currentPage > 1,
+      hasNextPage: currentPage < totalPages,
+    },
+  };
+}
+
+function buildCommissionRecord({
+  saleId,
+  employeeId,
+  employeeCommissionRate,
+  serviceSubtotal = 0,
+  productSubtotal = 0,
+  discount = 0,
+  generatedAt,
+}) {
+  const serviceSubtotalCents = toCents(serviceSubtotal);
+  const productSubtotalCents = toCents(productSubtotal);
+  const [serviceDiscountCents, productDiscountCents] = allocateDiscountCents(
+    [serviceSubtotalCents, productSubtotalCents],
+    toCents(discount),
+  );
+  const netServiceCents = serviceSubtotalCents - serviceDiscountCents;
+  const netProductCents = productSubtotalCents - productDiscountCents;
+  const serviceEmployeeAmountCents = percentageAmountCents(netServiceCents, SERVICE_EMPLOYEE_PERCENTAGE);
+  const serviceAdminAmountCents = percentageAmountCents(netServiceCents, SERVICE_ADMIN_PERCENTAGE);
+  const productEmployeeAmountCents = percentageAmountCents(netProductCents, employeeCommissionRate);
+  const amountCents = serviceEmployeeAmountCents + productEmployeeAmountCents;
+  const percentageLabel =
+    netServiceCents > 0 && netProductCents > 0
+      ? `${SERVICE_EMPLOYEE_PERCENTAGE}% servicios + ${employeeCommissionRate}% productos`
+      : netServiceCents > 0
+        ? `${SERVICE_EMPLOYEE_PERCENTAGE}% servicios`
+        : `${employeeCommissionRate}% productos`;
+
+  return {
+    id: nextId(commissions),
+    saleId,
+    employeeId,
+    percentage: netServiceCents > 0 ? SERVICE_EMPLOYEE_PERCENTAGE : employeeCommissionRate,
+    percentageLabel,
+    employeeRate: employeeCommissionRate,
+    amount: centsToMoney(amountCents),
+    serviceAmount: centsToMoney(serviceEmployeeAmountCents),
+    productAmount: centsToMoney(productEmployeeAmountCents),
+    serviceNetSales: centsToMoney(netServiceCents),
+    productNetSales: centsToMoney(netProductCents),
+    serviceDiscount: centsToMoney(serviceDiscountCents),
+    productDiscount: centsToMoney(productDiscountCents),
+    adminPercentage: netServiceCents > 0 ? SERVICE_ADMIN_PERCENTAGE : 0,
+    adminAmount: centsToMoney(serviceAdminAmountCents),
+    status: "pending",
+    generatedAt,
+  };
+}
+
 function normalizeDateFilter(value, boundary) {
   if (!value) return null;
 
@@ -572,6 +733,17 @@ function buildSalesSummary(filteredSales) {
   };
 }
 
+function buildSalesFilters(filters = {}) {
+  return {
+    query: filters.query ?? "",
+    from: filters.from ?? "",
+    to: filters.to ?? "",
+    type: filters.type ?? "all",
+    page: parsePaginationValue(filters.page, 1),
+    pageSize: parsePaginationValue(filters.pageSize, 10, { min: 1, max: 100 }),
+  };
+}
+
 export const salesStore = {
   getOptions(currentUser) {
     const clients = clientStore.list({ status: "active" }).data;
@@ -606,19 +778,17 @@ export const salesStore = {
     const filteredSales = [...filterSalesForUser(currentUser, filters)].sort(
       (a, b) => new Date(b.soldAt) - new Date(a.soldAt),
     );
+    const paginatedSales = paginateCollection(filteredSales, filters);
 
     return {
       ok: true,
       status: 200,
       data: {
-        sales: filteredSales.map(enrichSale),
+        sales: paginatedSales.items.map(enrichSale),
         totals: buildSalesTotals(filteredSales),
         summary: buildSalesSummary(filteredSales),
-        filters: {
-          query: filters.query ?? "",
-          from: filters.from ?? "",
-          to: filters.to ?? "",
-        },
+        filters: buildSalesFilters(filters),
+        pagination: paginatedSales.pagination,
       },
     };
   },
@@ -720,17 +890,15 @@ export const salesStore = {
       visitedAt: soldAt,
       notes: payload.notes?.trim() ?? "",
     };
-    const commission = {
-      id: nextId(commissions),
+    const commission = buildCommissionRecord({
       saleId,
       employeeId: employee.id,
-      percentage: SERVICE_EMPLOYEE_PERCENTAGE,
-      amount: money((total * SERVICE_EMPLOYEE_PERCENTAGE) / 100),
-      adminPercentage: SERVICE_ADMIN_PERCENTAGE,
-      adminAmount: money((total * SERVICE_ADMIN_PERCENTAGE) / 100),
-      status: "pending",
+      employeeCommissionRate: employee.commissionRate,
+      serviceSubtotal: subtotal,
+      productSubtotal: 0,
+      discount,
       generatedAt: soldAt,
-    };
+    });
 
     sales = [...sales, sale];
     saleDetails = [...saleDetails, detail];
@@ -808,15 +976,15 @@ export const salesStore = {
       unitPrice: money(line.product.price),
       lineTotal: money(line.product.price * line.quantity),
     }));
-    const commission = {
-      id: nextId(commissions),
+    const commission = buildCommissionRecord({
       saleId,
       employeeId: employee.id,
-      percentage: employee.commissionRate,
-      amount: money((total * employee.commissionRate) / 100),
-      status: "pending",
+      employeeCommissionRate: employee.commissionRate,
+      serviceSubtotal: 0,
+      productSubtotal: subtotal,
+      discount,
       generatedAt: soldAt,
-    };
+    });
 
     sales = [...sales, sale];
     saleDetails = [...saleDetails, ...details];
@@ -859,6 +1027,9 @@ export const salesStore = {
     const total = money(subtotal - discount);
     const serviceSubtotal = money(
       saleLines.reduce((sum, line) => sum + (line.itemType === "service" ? line.lineTotal : 0), 0),
+    );
+    const productSubtotal = money(
+      saleLines.reduce((sum, line) => sum + (line.itemType === "product" ? line.lineTotal : 0), 0),
     );
     const saleId = nextId(sales);
     const firstDetailId = nextId(saleDetails);
@@ -913,20 +1084,15 @@ export const salesStore = {
         visitedAt: soldAt,
         notes: payload.notes?.trim() ?? "",
       }));
-    const commission = {
-      id: nextId(commissions),
+    const commission = buildCommissionRecord({
       saleId,
       employeeId: employee.id,
-      percentage: serviceSubtotal > 0 ? SERVICE_EMPLOYEE_PERCENTAGE : employee.commissionRate,
-      amount:
-        serviceSubtotal > 0
-          ? money((serviceSubtotal * SERVICE_EMPLOYEE_PERCENTAGE) / 100)
-          : money((total * employee.commissionRate) / 100),
-      adminPercentage: serviceSubtotal > 0 ? SERVICE_ADMIN_PERCENTAGE : 0,
-      adminAmount: serviceSubtotal > 0 ? money((serviceSubtotal * SERVICE_ADMIN_PERCENTAGE) / 100) : 0,
-      status: "pending",
+      employeeCommissionRate: employee.commissionRate,
+      serviceSubtotal,
+      productSubtotal,
+      discount,
       generatedAt: soldAt,
-    };
+    });
 
     sales = [...sales, sale];
     saleDetails = [...saleDetails, ...details];
@@ -959,19 +1125,17 @@ export const salesStore = {
     const filteredSales = [...filterEmployeeSales(employeeResult.employee.id, filters)].sort(
       (a, b) => new Date(b.soldAt) - new Date(a.soldAt),
     );
+    const paginatedSales = paginateCollection(filteredSales, filters);
 
     return {
       ok: true,
       status: 200,
       data: {
         employee: employeeResult.employee,
-        sales: filteredSales.map(enrichSale),
+        sales: paginatedSales.items.map(enrichSale),
         totals: buildSalesTotals(filteredSales),
-        filters: {
-          from: filters.from ?? "",
-          to: filters.to ?? "",
-          type: filters.type ?? "all",
-        },
+        filters: buildSalesFilters(filters),
+        pagination: paginatedSales.pagination,
       },
     };
   },
@@ -999,13 +1163,14 @@ export const salesStore = {
         };
       })
       .sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
+    const paginatedCommissions = paginateCollection(employeeCommissions, filters);
 
     return {
       ok: true,
       status: 200,
       data: {
         employee: employeeResult.employee,
-        commissions: employeeCommissions,
+        commissions: paginatedCommissions.items,
         totals: {
           count: employeeCommissions.length,
           amount: money(
@@ -1017,12 +1182,18 @@ export const salesStore = {
               .reduce((total, commission) => total + commission.amount, 0),
           ),
         },
-        filters: {
-          from: filters.from ?? "",
-          to: filters.to ?? "",
-          type: filters.type ?? "all",
-        },
+        filters: buildSalesFilters(filters),
+        pagination: paginatedCommissions.pagination,
       },
     };
   },
+};
+
+export const __salesFinancialInternals = {
+  allocateDiscountCents,
+  buildCommissionRecord,
+  centsToMoney,
+  money,
+  percentageAmountCents,
+  toCents,
 };

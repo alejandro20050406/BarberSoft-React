@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import PaginationControls from "../../components/ui/PaginationControls";
 import { salesService } from "../../features/sales/services/salesService";
+import { downloadCsv } from "../../utils/csv";
 
 const SALE_TYPES = {
   all: "Todas",
@@ -49,9 +51,10 @@ const getSaleItemsLabel = (sale) =>
   "Sin detalle";
 
 export default function MySalesPage() {
-  const [filters, setFilters] = useState(buildInitialFilters);
-  const [appliedFilters, setAppliedFilters] = useState(buildInitialFilters);
+  const [filters, setFilters] = useState(() => ({ ...buildInitialFilters(), page: 1, pageSize: 10 }));
+  const [appliedFilters, setAppliedFilters] = useState(() => ({ ...buildInitialFilters(), page: 1, pageSize: 10 }));
   const [sales, setSales] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [totals, setTotals] = useState({
     count: 0,
     subtotal: 0,
@@ -87,6 +90,7 @@ export default function MySalesPage() {
       setSales(response.data.sales ?? []);
       setTotals(response.data.totals ?? {});
       setEmployee(response.data.employee ?? null);
+      setPagination(response.data.pagination ?? null);
       setIsLoading(false);
     }
 
@@ -113,14 +117,51 @@ export default function MySalesPage() {
   };
 
   const applyFilters = () => {
-    setAppliedFilters({ ...filters });
+    setAppliedFilters((current) => ({ ...current, ...filters, page: 1 }));
   };
 
   const clearFilters = () => {
-    const nextFilters = { from: "", to: "", type: "all" };
+    const nextFilters = { from: "", to: "", type: "all", page: 1, pageSize: filters.pageSize };
 
     setFilters(nextFilters);
     setAppliedFilters(nextFilters);
+  };
+
+  const handlePageChange = (page) => {
+    setAppliedFilters((current) => ({ ...current, page }));
+  };
+
+  const handlePageSizeChange = (pageSize) => {
+    setFilters((current) => ({ ...current, pageSize }));
+    setAppliedFilters((current) => ({ ...current, page: 1, pageSize }));
+  };
+
+  const handleExport = async () => {
+    const response = await salesService.getMySales({
+      ...appliedFilters,
+      page: 1,
+      pageSize: 100,
+    });
+
+    if (!response.ok) {
+      setRequestError(response.message);
+      return;
+    }
+
+    downloadCsv(
+      "mis-ventas.csv",
+      ["Fecha", "Folio", "Tipo", "Cliente", "Detalle", "Pago", "Total", "Comision"],
+      (response.data.sales ?? []).map((sale) => [
+        formatDateTime(sale.soldAt),
+        sale.folio,
+        SALE_TYPES[sale.type] ?? sale.type,
+        sale.client?.name ?? "Sin cliente",
+        getSaleItemsLabel(sale),
+        sale.paymentMethodLabel,
+        Number(sale.total ?? 0).toFixed(2),
+        Number(sale.commission?.amount ?? 0).toFixed(2),
+      ]),
+    );
   };
 
   return (
@@ -181,6 +222,9 @@ export default function MySalesPage() {
           <button className="button button-secondary" type="button" onClick={clearFilters}>
             Limpiar
           </button>
+          <button className="button button-secondary" type="button" onClick={handleExport}>
+            Exportar CSV
+          </button>
         </div>
       </section>
 
@@ -233,41 +277,49 @@ export default function MySalesPage() {
         ) : sales.length === 0 ? (
           <p className="empty-text">No hay ventas registradas con los filtros seleccionados.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table wide-table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Folio</th>
-                  <th>Tipo</th>
-                  <th>Cliente</th>
-                  <th>Detalle</th>
-                  <th>Pago</th>
-                  <th>Total</th>
-                  <th>Ganancia empleado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales.map((sale) => (
-                  <tr key={sale.id}>
-                    <td>{formatDateTime(sale.soldAt)}</td>
-                    <td>{sale.folio}</td>
-                    <td>{SALE_TYPES[sale.type] ?? sale.type}</td>
-                    <td>{sale.client?.name ?? "Sin cliente"}</td>
-                    <td>{getSaleItemsLabel(sale)}</td>
-                    <td>{sale.paymentMethodLabel}</td>
-                    <td>{formatCurrency(sale.total)}</td>
-                    <td>
-                      <strong>{formatCurrency(sale.commission?.amount)}</strong>
-                      <small className="commission-rate">
-                        {sale.commission?.percentage ?? 0}% - {sale.commission?.status ?? "sin comision"}
-                      </small>
-                    </td>
+          <>
+            <div className="table-wrap">
+              <table className="data-table wide-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Folio</th>
+                    <th>Tipo</th>
+                    <th>Cliente</th>
+                    <th>Detalle</th>
+                    <th>Pago</th>
+                    <th>Total</th>
+                    <th>Ganancia empleado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {sales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td>{formatDateTime(sale.soldAt)}</td>
+                      <td>{sale.folio}</td>
+                      <td>{SALE_TYPES[sale.type] ?? sale.type}</td>
+                      <td>{sale.client?.name ?? "Sin cliente"}</td>
+                      <td>{getSaleItemsLabel(sale)}</td>
+                      <td>{sale.paymentMethodLabel}</td>
+                      <td>{formatCurrency(sale.total)}</td>
+                      <td>
+                        <strong>{formatCurrency(sale.commission?.amount)}</strong>
+                        <small className="commission-rate">
+                          {sale.commission?.percentageLabel ?? `${sale.commission?.percentage ?? 0}%`} - {sale.commission?.status ?? "sin comision"}
+                        </small>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </>
         )}
       </section>
     </div>

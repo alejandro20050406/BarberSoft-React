@@ -19,6 +19,8 @@ function getSalesFilters(searchParams) {
     from: searchParams?.get("from") ?? "",
     to: searchParams?.get("to") ?? "",
     type: ["all", "service", "product", "mixed"].includes(type) ? type : "all",
+    page: searchParams?.get("page") ?? "1",
+    pageSize: searchParams?.get("pageSize") ?? "10",
   };
 }
 
@@ -49,6 +51,8 @@ function getManagementFilters(searchParams) {
     query: searchParams?.get("query") ?? "",
     from: searchParams?.get("from") ?? "",
     to: searchParams?.get("to") ?? "",
+    page: searchParams?.get("page") ?? "1",
+    pageSize: searchParams?.get("pageSize") ?? "10",
   };
 }
 

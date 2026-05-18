@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
+import PaginationControls from "../../../components/ui/PaginationControls";
+import { downloadCsv } from "../../../utils/csv";
 import { salesService } from "../services/salesService";
 import SaleForm from "./SaleForm";
 
@@ -38,23 +40,20 @@ export default function SalesManagementPage() {
   const [mode, setMode] = useState("list");
   const [sales, setSales] = useState([]);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
-  const [filters, setFilters] = useState({ query: "", from: "", to: "" });
-  const [appliedFilters, setAppliedFilters] = useState({ query: "", from: "", to: "" });
+  const [pagination, setPagination] = useState(null);
+  const [filters, setFilters] = useState({ query: "", from: "", to: "", page: 1, pageSize: 10 });
+  const [appliedFilters, setAppliedFilters] = useState({ query: "", from: "", to: "", page: 1, pageSize: 10 });
   const [isLoading, setIsLoading] = useState(true);
   const [requestError, setRequestError] = useState("");
   const [selectedSale, setSelectedSale] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [message, setMessage] = useState("");
 
-  const loadSales = async (currentFilters = appliedFilters) => {
-    setIsLoading(true);
-    setRequestError("");
-
-    const response = await salesService.listSales(currentFilters);
-
+  const applySalesResponse = useCallback((response) => {
     if (!response.ok) {
       setSales([]);
       setSummary(EMPTY_SUMMARY);
+      setPagination(null);
       setRequestError(response.message);
       setIsLoading(false);
       return response;
@@ -62,13 +61,39 @@ export default function SalesManagementPage() {
 
     setSales(response.data.sales ?? []);
     setSummary(response.data.summary ?? EMPTY_SUMMARY);
+    setPagination(response.data.pagination ?? null);
     setIsLoading(false);
     return response;
-  };
+  }, []);
+
+  const loadSales = useCallback(async (currentFilters = appliedFilters) => {
+    setIsLoading(true);
+    setRequestError("");
+
+    const response = await salesService.listSales(currentFilters);
+    return applySalesResponse(response);
+  }, [appliedFilters, applySalesResponse]);
 
   useEffect(() => {
-    loadSales(appliedFilters);
-  }, [appliedFilters]);
+    let isActive = true;
+
+    async function fetchSales() {
+      setIsLoading(true);
+      setRequestError("");
+
+      const response = await salesService.listSales(appliedFilters);
+
+      if (!isActive) return;
+
+      applySalesResponse(response);
+    }
+
+    fetchSales();
+
+    return () => {
+      isActive = false;
+    };
+  }, [appliedFilters, applySalesResponse]);
 
   const periodLabel = useMemo(() => {
     if (appliedFilters.from && appliedFilters.to) {
@@ -86,14 +111,51 @@ export default function SalesManagementPage() {
   };
 
   const applyFilters = () => {
-    setAppliedFilters({ ...filters });
+    setAppliedFilters((current) => ({ ...current, ...filters, page: 1 }));
   };
 
   const clearFilters = () => {
-    const nextFilters = { query: "", from: "", to: "" };
+    const nextFilters = { query: "", from: "", to: "", page: 1, pageSize: filters.pageSize };
 
     setFilters(nextFilters);
     setAppliedFilters(nextFilters);
+  };
+
+  const handlePageChange = (page) => {
+    setAppliedFilters((current) => ({ ...current, page }));
+  };
+
+  const handlePageSizeChange = (pageSize) => {
+    setFilters((current) => ({ ...current, pageSize }));
+    setAppliedFilters((current) => ({ ...current, page: 1, pageSize }));
+  };
+
+  const handleExport = async () => {
+    const response = await salesService.listSales({
+      ...appliedFilters,
+      page: 1,
+      pageSize: 100,
+    });
+
+    if (!response.ok) {
+      setRequestError(response.message);
+      return;
+    }
+
+    downloadCsv(
+      "ventas-filtradas.csv",
+      ["Folio", "Fecha", "Tipo", "Cliente", "Empleado", "Pago", "Total", "Detalle"],
+      (response.data.sales ?? []).map((sale) => [
+        sale.folio,
+        formatDate(sale.soldAt),
+        TYPE_LABELS[sale.type] ?? sale.type,
+        sale.client?.name ?? "Sin cliente",
+        sale.employee?.name ?? "Sin empleado",
+        sale.paymentMethodLabel,
+        Number(sale.total ?? 0).toFixed(2),
+        getSaleItemsLabel(sale),
+      ]),
+    );
   };
 
   const handleNewSale = () => {
@@ -206,6 +268,9 @@ export default function SalesManagementPage() {
         <button className="button button-secondary" type="button" onClick={clearFilters}>
           Limpiar
         </button>
+        <button className="button button-secondary" type="button" onClick={handleExport}>
+          Exportar CSV
+        </button>
       </section>
 
       {requestError ? <p className="form-error">{requestError}</p> : null}
@@ -217,47 +282,57 @@ export default function SalesManagementPage() {
         ) : sales.length === 0 ? (
           <p className="empty-text">No hay ventas registradas con los filtros seleccionados.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table sales-management-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Cliente</th>
-                  <th>Empleado</th>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Total</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales.map((sale) => (
-                  <tr key={sale.id}>
-                    <td>#{sale.id}</td>
-                    <td>{sale.client?.name ?? "Sin cliente"}</td>
-                    <td>{sale.employee?.name ?? "Sin empleado"}</td>
-                    <td>{formatDate(sale.soldAt)}</td>
-                    <td>{TYPE_LABELS[sale.type] ?? sale.type}</td>
-                    <td>{formatCurrency(sale.total)}</td>
-                    <td className="actions-cell sales-actions">
-                      <button className="icon-action" type="button" title="Ver detalle" onClick={() => setSelectedSale(sale)}>
-                        Ver
-                      </button>
-                      <button className="icon-action" type="button" title="Ticket" onClick={() => setSelectedSale(sale)}>
-                        Ticket
-                      </button>
-                      <button className="icon-action" type="button" title="Editar" onClick={() => setSelectedSale(sale)}>
-                        Editar
-                      </button>
-                      <button className="icon-action danger" type="button" title="Eliminar" onClick={() => setConfirmDelete(sale)}>
-                        Eliminar
-                      </button>
-                    </td>
+          <>
+            <div className="table-wrap">
+              <table className="data-table sales-management-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Empleado</th>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Total</th>
+                    <th>Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {sales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td>#{sale.id}</td>
+                      <td>{sale.client?.name ?? "Sin cliente"}</td>
+                      <td>{sale.employee?.name ?? "Sin empleado"}</td>
+                      <td>{formatDate(sale.soldAt)}</td>
+                      <td>{TYPE_LABELS[sale.type] ?? sale.type}</td>
+                      <td>{formatCurrency(sale.total)}</td>
+                      <td className="actions-cell sales-actions">
+                        <button className="icon-action" type="button" title="Ver detalle" onClick={() => setSelectedSale(sale)}>
+                          Ver
+                        </button>
+                        <button className="icon-action" type="button" title="Ticket" onClick={() => setSelectedSale(sale)}>
+                          Ticket
+                        </button>
+                        <button className="icon-action" type="button" title="Editar" onClick={() => setSelectedSale(sale)}>
+                          Editar
+                        </button>
+                        <button className="icon-action danger" type="button" title="Eliminar" onClick={() => setConfirmDelete(sale)}>
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="panel-inline">
+              <PaginationControls
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </div>
+          </>
         )}
       </section>
 

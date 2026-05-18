@@ -796,7 +796,7 @@ input, textarea, select {
 
 .sales-filter-panel {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 220px 220px auto auto;
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(160px, 220px)) repeat(3, auto);
   gap: var(--space-3);
   align-items: center;
 }
@@ -804,6 +804,11 @@ input, textarea, select {
 .sales-table-panel {
   padding: 0;
   overflow: hidden;
+}
+
+.panel-inline {
+  padding: var(--space-4);
+  border-top: var(--border-thin);
 }
 
 .sales-management-table th,
@@ -832,6 +837,22 @@ input, textarea, select {
   color: var(--color-white);
   background: var(--color-danger);
   border-color: var(--color-danger);
+}
+
+.pagination-bar,
+.pagination-actions,
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pagination-bar {
+  justify-content: space-between;
+}
+
+.pagination-size .field {
+  min-width: 88px;
 }
 
 .status-pill {
@@ -1050,5 +1071,12 @@ input, textarea, select {
 
   .sales-actions {
     justify-content: flex-start;
+  }
+
+  .pagination-bar,
+  .pagination-actions,
+  .pagination-size {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
