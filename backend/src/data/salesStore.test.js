@@ -1,8 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { __salesFinancialInternals } from "./salesStore.js";
+import { productStore } from "./productStore.js";
+import { salesStore, __salesFinancialInternals } from "./salesStore.js";
 
 const { allocateDiscountCents, buildCommissionRecord } = __salesFinancialInternals;
+
+test.beforeEach(() => {
+  productStore.__resetForTests();
+  salesStore.__resetForTests();
+});
 
 test("allocateDiscountCents reparte el descuento completo sin perder centavos", () => {
   const allocations = allocateDiscountCents([10000, 10000, 10000], 1);
@@ -67,4 +73,34 @@ test("buildCommissionRecord prorratea descuento y mezcla comisiones de servicio 
   assert.equal(commission.amount, 83.99);
   assert.equal(commission.adminAmount, 18.67);
   assert.equal(commission.percentageLabel, "80% servicios + 20% productos");
+});
+
+test("listSoldProducts resume unidades e ingresos de productos vendidos", () => {
+  const currentUser = {
+    id: 1,
+    role: "admin",
+    permissions: ["sales:manage"],
+  };
+
+  const sale = salesStore.createProductSale(
+    {
+      clientId: 1,
+      employeeId: 1,
+      paymentMethod: "cash",
+      discount: 0,
+      lineItems: [{ productId: 1, quantity: 2, unitPrice: 160, lineTotal: 320 }],
+    },
+    currentUser,
+  );
+
+  assert.equal(sale.ok, true);
+
+  const summary = salesStore.listSoldProducts({ pageSize: 10 });
+
+  assert.equal(summary.ok, true);
+  assert.equal(summary.data.products.length, 1);
+  assert.equal(summary.data.products[0].productId, 1);
+  assert.equal(summary.data.products[0].unitsSold, 2);
+  assert.equal(summary.data.products[0].grossRevenue, 320);
+  assert.equal(summary.data.totals.unitsSold, 2);
 });

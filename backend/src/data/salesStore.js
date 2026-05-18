@@ -744,6 +744,16 @@ function buildSalesFilters(filters = {}) {
   };
 }
 
+function buildSoldProductsFilters(filters = {}) {
+  return {
+    query: filters.query ?? "",
+    from: filters.from ?? "",
+    to: filters.to ?? "",
+    page: parsePaginationValue(filters.page, 1),
+    pageSize: parsePaginationValue(filters.pageSize, 10, { min: 1, max: 100 }),
+  };
+}
+
 export const salesStore = {
   getOptions(currentUser) {
     const clients = clientStore.list({ status: "active" }).data;
@@ -943,7 +953,11 @@ export const salesStore = {
     const saleId = nextId(sales);
     const firstDetailId = nextId(saleDetails);
     const stockResults = stockMovements.map((movement) =>
-      productStore.decreaseStock(movement.productId, movement.quantity),
+      productStore.decreaseStock(movement.productId, movement.quantity, {
+        saleId,
+        reason: "Descuento de inventario por venta de producto.",
+        notes: payload.notes?.trim() ?? "",
+      }),
     );
     const failedStockUpdate = stockResults.find((result) => !result.ok);
 
@@ -1001,7 +1015,7 @@ export const salesStore = {
         employee,
         linkedService,
         products: productLines.map((line) => line.product),
-        stockMovements: stockResults.map((result) => result.data),
+        stockMovements: stockResults.map((result) => result.data.movement),
       },
       message: "Venta de producto registrada y stock actualizado correctamente.",
     };
@@ -1035,7 +1049,11 @@ export const salesStore = {
     const firstDetailId = nextId(saleDetails);
     const firstVisitId = nextId(visits);
     const stockResults = stockMovements.map((movement) =>
-      productStore.decreaseStock(movement.productId, movement.quantity),
+      productStore.decreaseStock(movement.productId, movement.quantity, {
+        saleId,
+        reason: "Descuento de inventario por venta registrada.",
+        notes: payload.notes?.trim() ?? "",
+      }),
     );
     const failedStockUpdate = stockResults.find((result) => !result.ok);
 
@@ -1109,7 +1127,7 @@ export const salesStore = {
         commission,
         client,
         employee,
-        stockMovements: stockResults.map((result) => result.data),
+        stockMovements: stockResults.map((result) => result.data.movement),
       },
       message: "Venta registrada correctamente.",
     };
@@ -1186,6 +1204,87 @@ export const salesStore = {
         pagination: paginatedCommissions.pagination,
       },
     };
+  },
+
+  listSoldProducts(filters = {}) {
+    const query = normalize(filters.query ?? "");
+    const fromDate = normalizeDateFilter(filters.from, "00:00:00.000");
+    const toDate = normalizeDateFilter(filters.to, "23:59:59.999");
+    const groupedProducts = new Map();
+
+    saleDetails.forEach((detail) => {
+      if (detail.itemType !== "product" || !detail.productId) return;
+
+      const sale = sales.find((item) => item.id === detail.saleId);
+      const product = productStore.findById(detail.productId);
+
+      if (!sale || !product) return;
+
+      const soldAt = new Date(sale.soldAt);
+      const productName = `${product.brand} ${product.model}`.trim();
+      const matchesQuery =
+        !query ||
+        normalize(productName).includes(query) ||
+        normalize(product.category).includes(query) ||
+        normalize(sale.folio).includes(query);
+      const matchesFrom = !fromDate || soldAt >= fromDate;
+      const matchesTo = !toDate || soldAt <= toDate;
+
+      if (!matchesQuery || !matchesFrom || !matchesTo) {
+        return;
+      }
+
+      const current = groupedProducts.get(product.id) ?? {
+        productId: product.id,
+        productName,
+        category: product.category,
+        unitsSold: 0,
+        grossRevenue: 0,
+        transactions: 0,
+        currentStock: product.stock,
+        minStock: product.minStock,
+        status: product.status,
+        lastSoldAt: sale.soldAt,
+      };
+
+      current.unitsSold += detail.quantity;
+      current.grossRevenue = money(current.grossRevenue + detail.lineTotal);
+      current.transactions += 1;
+      current.lastSoldAt =
+        new Date(sale.soldAt) > new Date(current.lastSoldAt) ? sale.soldAt : current.lastSoldAt;
+      groupedProducts.set(product.id, current);
+    });
+
+    const soldProducts = [...groupedProducts.values()].sort((left, right) => {
+      if (right.unitsSold !== left.unitsSold) {
+        return right.unitsSold - left.unitsSold;
+      }
+
+      return new Date(right.lastSoldAt) - new Date(left.lastSoldAt);
+    });
+    const paginated = paginateCollection(soldProducts, filters);
+
+    return {
+      ok: true,
+      status: 200,
+      data: {
+        products: paginated.items,
+        pagination: paginated.pagination,
+        filters: buildSoldProductsFilters(filters),
+        totals: {
+          products: soldProducts.length,
+          unitsSold: soldProducts.reduce((sum, product) => sum + product.unitsSold, 0),
+          grossRevenue: money(soldProducts.reduce((sum, product) => sum + product.grossRevenue, 0)),
+        },
+      },
+    };
+  },
+
+  __resetForTests() {
+    sales = [];
+    saleDetails = [];
+    visits = [];
+    commissions = [];
   },
 };
 
