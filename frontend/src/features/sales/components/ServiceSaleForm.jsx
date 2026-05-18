@@ -23,6 +23,8 @@ export default function ServiceSaleForm() {
     selectedService,
     subtotal,
     total,
+    employeeEarning,
+    adminProfit,
     updateField,
     resetForm,
     submit,
@@ -137,14 +139,23 @@ export default function ServiceSaleForm() {
                 <span>Total</span>
                 <strong>{formatCurrency(total)}</strong>
               </div>
+              <div>
+                <span>Empleado 80%</span>
+                <strong>{formatCurrency(employeeEarning)}</strong>
+              </div>
+              <div>
+                <span>Admin 20%</span>
+                <strong>{formatCurrency(adminProfit)}</strong>
+              </div>
             </div>
 
             {requestError ? <p className="form-error">{requestError}</p> : null}
             {successMessage ? <p className="success-text">{successMessage}</p> : null}
             {lastSale ? (
               <p className="empty-text">
-                Folio generado: <strong>{lastSale.sale.folio}</strong>. Comision:{" "}
-                <strong>{formatCurrency(lastSale.commission.amount)}</strong>
+                Folio generado: <strong>{lastSale.sale.folio}</strong>. Empleado:{" "}
+                <strong>{formatCurrency(lastSale.commission.amount)}</strong>. Admin:{" "}
+                <strong>{formatCurrency(lastSale.commission.adminAmount)}</strong>
               </p>
             ) : null}
 

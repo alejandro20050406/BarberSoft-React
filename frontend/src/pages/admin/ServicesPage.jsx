@@ -195,9 +195,23 @@ export default function ServicesPage() {
 
       <ConfirmDialog
         isOpen={Boolean(confirm)}
-        title="Confirmar cambio"
-        message={`Se cambiara el estado de "${confirm?.name}".`}
-        confirmLabel="Si, continuar"
+        title={confirm?.nextStatus === "inactive" ? "Desactivar servicio" : "Activar servicio"}
+        message={
+          confirm?.nextStatus === "inactive"
+            ? `Se dara de baja logica a "${confirm?.name}".`
+            : `Se reactivara "${confirm?.name}".`
+        }
+        details={
+          confirm?.nextStatus === "inactive"
+            ? [
+                "El servicio no aparecera en ventas nuevas.",
+                "Las visitas y ventas ya registradas conservaran este servicio.",
+                "Podras activarlo nuevamente desde el catalogo.",
+              ]
+            : ["El servicio volvera a estar disponible para ventas nuevas."]
+        }
+        variant={confirm?.nextStatus === "inactive" ? "danger" : "info"}
+        confirmLabel={confirm?.nextStatus === "inactive" ? "Desactivar" : "Activar"}
         onCancel={() => setConfirm(null)}
         onConfirm={applyStatusChange}
       />

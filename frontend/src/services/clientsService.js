@@ -38,4 +38,8 @@ export const clientsService = {
       body: { status },
     });
   },
+
+  getVisits(id) {
+    return request(`${API_ENDPOINTS.clients}/${id}/visits`);
+  },
 };

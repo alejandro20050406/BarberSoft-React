@@ -84,21 +84,49 @@ export function useProductSale() {
     };
   }, []);
 
+  const requestedByProduct = useMemo(() => {
+    const totals = new Map();
+
+    form.lineItems.forEach((line) => {
+      const productId = Number(line.productId);
+      const quantity = Number(line.quantity || 0);
+
+      if (!Number.isInteger(productId) || productId <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+        return;
+      }
+
+      totals.set(productId, (totals.get(productId) ?? 0) + quantity);
+    });
+
+    return totals;
+  }, [form.lineItems]);
+
   const lineItems = useMemo(
     () =>
       form.lineItems.map((line) => {
         const product = options.products.find((item) => item.id === Number(line.productId)) ?? null;
         const quantity = Number(line.quantity || 0);
         const validQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+        const requestedTotal = product ? requestedByProduct.get(product.id) ?? validQuantity : validQuantity;
+        const isOutOfStock = Boolean(product && product.stock <= 0);
+        const exceedsStock = Boolean(product && requestedTotal > product.stock);
+        const reachesMinimum = Boolean(
+          product && product.stock - requestedTotal <= product.minStock && !exceedsStock,
+        );
 
         return {
           ...line,
           product,
           quantity: validQuantity,
+          requestedTotal,
+          availableAfterSale: product ? product.stock - requestedTotal : null,
+          isOutOfStock,
+          exceedsStock,
+          reachesMinimum,
           lineTotal: product ? product.price * validQuantity : 0,
         };
       }),
-    [form.lineItems, options.products],
+    [form.lineItems, options.products, requestedByProduct],
   );
 
   const linkedService = useMemo(
@@ -108,6 +136,39 @@ export function useProductSale() {
   const subtotal = lineItems.reduce((total, line) => total + line.lineTotal, 0);
   const discount = Number(form.discount || 0);
   const total = Math.max(subtotal - (Number.isFinite(discount) ? discount : 0), 0);
+  const activeProductsCount = options.products.length;
+  const lowStockProductsCount = options.products.filter(
+    (product) => product.stock > 0 && product.stock <= product.minStock,
+  ).length;
+  const outOfStockProductsCount = options.products.filter((product) => product.stock <= 0).length;
+  const inventoryBlockingMessages = [
+    ...new Set(
+      lineItems
+        .filter((line) => line.product && (line.isOutOfStock || line.exceedsStock))
+        .map((line) =>
+          line.isOutOfStock
+            ? `${line.product.brand} ${line.product.model} no tiene inventario disponible.`
+            : `${line.product.brand} ${line.product.model} solo tiene ${line.product.stock} unidad(es) disponible(s).`,
+        ),
+    ),
+  ];
+  const hasInventoryBlock = inventoryBlockingMessages.length > 0;
+  const lineValidationErrors = lineItems.reduce((currentErrors, line, index) => {
+    const nextErrors = { ...currentErrors };
+
+    if (!line.productId || !line.product) {
+      nextErrors[`lineItems.${index}.productId`] = "Seleccione un producto existente.";
+    }
+
+    if (!line.quantity) {
+      nextErrors[`lineItems.${index}.quantity`] = "Ingrese una cantidad mayor a 0.";
+    } else if (line.product && line.requestedTotal > line.product.stock) {
+      nextErrors[`lineItems.${index}.quantity`] = "La cantidad supera el stock disponible.";
+    }
+
+    return nextErrors;
+  }, {});
+  const hasLineValidationErrors = Object.keys(lineValidationErrors).length > 0;
 
   const clearMessages = () => {
     setRequestError("");
@@ -164,6 +225,22 @@ export function useProductSale() {
   };
 
   const submit = async () => {
+    if (hasLineValidationErrors || hasInventoryBlock) {
+      setErrors((current) => ({
+        ...current,
+        ...lineValidationErrors,
+        ...(hasInventoryBlock ? { lineItems: "Corrige el inventario antes de registrar la venta." } : {}),
+      }));
+      setRequestError("No se pudo registrar la venta de producto.");
+      setSuccessMessage("");
+      return {
+        ok: false,
+        status: 422,
+        message: "No se pudo registrar la venta de producto.",
+        errors: lineValidationErrors,
+      };
+    }
+
     setIsSaving(true);
     setRequestError("");
     setSuccessMessage("");
@@ -172,9 +249,11 @@ export function useProductSale() {
       clientId: Number(form.clientId),
       employeeId: Number(form.employeeId),
       linkedServiceId: form.linkedServiceId ? Number(form.linkedServiceId) : null,
-      lineItems: form.lineItems.map((line) => ({
+      lineItems: lineItems.map((line) => ({
         productId: Number(line.productId),
-        quantity: Number(line.quantity),
+        quantity: line.quantity,
+        unitPrice: line.product?.price ?? 0,
+        lineTotal: line.lineTotal,
       })),
       paymentMethod: form.paymentMethod,
       discount: Number(form.discount || 0),
@@ -212,6 +291,11 @@ export function useProductSale() {
     lastSale,
     linkedService,
     lineItems,
+    activeProductsCount,
+    lowStockProductsCount,
+    outOfStockProductsCount,
+    inventoryBlockingMessages,
+    hasInventoryBlock,
     subtotal,
     total,
     updateField,

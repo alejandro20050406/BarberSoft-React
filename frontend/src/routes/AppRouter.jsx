@@ -24,8 +24,7 @@ import ClientsPage from "../pages/admin/ClientsPage";
 import MySalesPage from "../pages/employee/MySalesPage";
 import CashClosingPage from "../pages/employee/CashClosingPage";
 import ProfilePage from "../pages/ProfilePage";
-import ProductSaleForm from "../features/sales/components/ProductSaleForm";
-import ServiceSaleForm from "../features/sales/components/ServiceSaleForm";
+import SalesManagementPage from "../features/sales/components/SalesManagementPage";
 
 export default function AppRouter() {
   return (
@@ -48,8 +47,9 @@ export default function AppRouter() {
           )}
         >
           <Route path={PATHS.admin} element={<AdminMenuPage />} />
-          <Route path={PATHS.adminSalesProduct} element={<ProductSaleForm />} />
-          <Route path={PATHS.adminSalesService} element={<ServiceSaleForm />} />
+          <Route path={PATHS.adminSale} element={<SalesManagementPage />} />
+          <Route path={PATHS.adminSalesProduct} element={<Navigate to={PATHS.adminSale} replace />} />
+          <Route path={PATHS.adminSalesService} element={<Navigate to={PATHS.adminSale} replace />} />
           <Route path={PATHS.adminSalesList} element={<div>Lista de Ventas</div>} />
           <Route path={PATHS.adminReports} element={<div>Reportes</div>} />
 
@@ -71,8 +71,9 @@ export default function AppRouter() {
           )}
         >
           <Route path={PATHS.employee} element={<EmployeeMenuPage />} />
-          <Route path={PATHS.employeeSalesProduct} element={<ProductSaleForm />} />
-          <Route path={PATHS.employeeSalesService} element={<ServiceSaleForm />} />
+          <Route path={PATHS.employeeSale} element={<SalesManagementPage />} />
+          <Route path={PATHS.employeeSalesProduct} element={<Navigate to={PATHS.employeeSale} replace />} />
+          <Route path={PATHS.employeeSalesService} element={<Navigate to={PATHS.employeeSale} replace />} />
           <Route path={PATHS.employeeMySales} element={<MySalesPage />} />
           <Route path={PATHS.employeeCashClosing} element={<CashClosingPage />} />
           <Route path={PATHS.employeeProfile} element={<ProfilePage />} />

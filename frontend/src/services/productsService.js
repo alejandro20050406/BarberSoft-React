@@ -11,6 +11,12 @@ const buildQuery = (filters = {}) => {
   if (filters.status && filters.status !== "all") {
     params.set("status", filters.status);
   }
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  if (filters.productId) params.set("productId", filters.productId);
+  if (filters.type && filters.type !== "all") params.set("type", filters.type);
+  if (filters.page) params.set("page", filters.page);
+  if (filters.pageSize) params.set("pageSize", filters.pageSize);
 
   const query = params.toString();
   return query ? `?${query}` : "";
@@ -40,5 +46,17 @@ export const productsService = {
       method: "PATCH",
       body: { status },
     });
+  },
+
+  getInventoryStatus() {
+    return request(`${API_ENDPOINTS.products}/inventory-status`);
+  },
+
+  getSoldSummary(filters = {}) {
+    return request(`${API_ENDPOINTS.products}/sold-summary${buildQuery(filters)}`);
+  },
+
+  getMovements(filters = {}) {
+    return request(`${API_ENDPOINTS.products}/movements${buildQuery(filters)}`);
   },
 };

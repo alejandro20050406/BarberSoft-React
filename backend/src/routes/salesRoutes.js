@@ -18,7 +18,41 @@ function getSalesFilters(searchParams) {
   return {
     from: searchParams?.get("from") ?? "",
     to: searchParams?.get("to") ?? "",
-    type: ["all", "service", "product"].includes(type) ? type : "all",
+    type: ["all", "service", "product", "mixed"].includes(type) ? type : "all",
+    page: searchParams?.get("page") ?? "1",
+    pageSize: searchParams?.get("pageSize") ?? "10",
+  };
+}
+
+function parseSaleManagementRoute(pathname) {
+  const basePath = `${env.apiPrefix}/sales/sales`;
+
+  if (pathname === basePath) {
+    return { matches: true };
+  }
+
+  const prefix = `${basePath}/`;
+  if (!pathname.startsWith(prefix)) {
+    return { matches: false };
+  }
+
+  const [idSegment, ...rest] = pathname.slice(prefix.length).split("/");
+  const id = Number(idSegment);
+
+  if (!Number.isInteger(id) || id <= 0 || rest.length > 0) {
+    return { matches: false };
+  }
+
+  return { matches: true, id };
+}
+
+function getManagementFilters(searchParams) {
+  return {
+    query: searchParams?.get("query") ?? "",
+    from: searchParams?.get("from") ?? "",
+    to: searchParams?.get("to") ?? "",
+    page: searchParams?.get("page") ?? "1",
+    pageSize: searchParams?.get("pageSize") ?? "10",
   };
 }
 
@@ -48,6 +82,28 @@ export async function handleSalesRoutes(request, response, pathname, searchParam
         response,
         salesStore.listAuthenticatedEmployeeCommissions(user, getSalesFilters(searchParams)),
       );
+      return true;
+    }
+
+    const managementRoute = parseSaleManagementRoute(pathname);
+
+    if (managementRoute.matches && request.method === "GET" && managementRoute.id === undefined) {
+      sendStoreResult(response, salesStore.listSales(user, getManagementFilters(searchParams)));
+      return true;
+    }
+
+    if (managementRoute.matches && request.method === "GET" && managementRoute.id !== undefined) {
+      sendStoreResult(response, salesStore.getSale(managementRoute.id, user));
+      return true;
+    }
+
+    if (managementRoute.matches && request.method === "DELETE" && managementRoute.id !== undefined) {
+      sendStoreResult(response, salesStore.deleteSale(managementRoute.id, user));
+      return true;
+    }
+
+    if (pathname === `${basePath}/sales` && request.method === "POST") {
+      sendStoreResult(response, salesStore.createSale(await readJsonBody(request), user));
       return true;
     }
 
