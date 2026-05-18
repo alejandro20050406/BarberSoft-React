@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import CatalogForm from "../../components/forms/CatalogForm";
 import FormField from "../../components/forms/FormField";
+import PaginationControls from "../../components/ui/PaginationControls";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { productCategoriesService } from "../../services/categoryServices";
 import { productsService } from "../../services/productsService";
@@ -15,9 +16,39 @@ const EMPTY_FORM = {
   price: "",
 };
 
+const EMPTY_INVENTORY_STATUS = {
+  totals: { products: 0, lowStock: 0, outOfStock: 0 },
+  lowStockProducts: [],
+  outOfStockProducts: [],
+};
+
+const EMPTY_SOLD_SUMMARY = {
+  products: [],
+  totals: { products: 0, unitsSold: 0, grossRevenue: 0 },
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [inventoryStatus, setInventoryStatus] = useState(EMPTY_INVENTORY_STATUS);
+  const [soldSummary, setSoldSummary] = useState(EMPTY_SOLD_SUMMARY);
+  const [soldPagination, setSoldPagination] = useState(null);
+  const [soldFilters, setSoldFilters] = useState({
+    query: "",
+    from: "",
+    to: "",
+    page: 1,
+    pageSize: 5,
+  });
+  const [movements, setMovements] = useState([]);
+  const [movementPagination, setMovementPagination] = useState(null);
+  const [movementFilters, setMovementFilters] = useState({
+    query: "",
+    productId: "",
+    type: "all",
+    page: 1,
+    pageSize: 5,
+  });
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -29,6 +60,14 @@ export default function ProductsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [formError, setFormError] = useState("");
+
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(value ?? 0));
+
+  const formatDate = (value) =>
+    value
+      ? new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+      : "-";
 
   const loadProducts = useCallback(
     async (currentFilters = filters, options = {}) => {
@@ -47,6 +86,37 @@ export default function ProductsPage() {
     },
     [filters],
   );
+
+  const applyInventoryInsights = useCallback((responses) => {
+    const [statusResponse, soldResponse, movementResponse] = responses;
+
+    if (statusResponse.ok) {
+      setInventoryStatus(statusResponse.data);
+    }
+
+    if (soldResponse.ok) {
+      setSoldSummary({
+        products: soldResponse.data.products ?? [],
+        totals: soldResponse.data.totals ?? EMPTY_SOLD_SUMMARY.totals,
+      });
+      setSoldPagination(soldResponse.data.pagination ?? null);
+    }
+
+    if (movementResponse.ok) {
+      setMovements(movementResponse.data.movements ?? []);
+      setMovementPagination(movementResponse.data.pagination ?? null);
+    }
+  }, []);
+
+  const loadInventoryInsights = useCallback(async () => {
+    const [statusResponse, soldResponse, movementResponse] = await Promise.all([
+      productsService.getInventoryStatus(),
+      productsService.getSoldSummary(soldFilters),
+      productsService.getMovements(movementFilters),
+    ]);
+
+    applyInventoryInsights([statusResponse, soldResponse, movementResponse]);
+  }, [applyInventoryInsights, movementFilters, soldFilters]);
 
   useEffect(() => {
     let isActive = true;
@@ -93,6 +163,28 @@ export default function ProductsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchInventoryInsights() {
+      const responses = await Promise.all([
+        productsService.getInventoryStatus(),
+        productsService.getSoldSummary(soldFilters),
+        productsService.getMovements(movementFilters),
+      ]);
+
+      if (!isActive) return;
+
+      applyInventoryInsights(responses);
+    }
+
+    fetchInventoryInsights();
+
+    return () => {
+      isActive = false;
+    };
+  }, [applyInventoryInsights, movementFilters, soldFilters]);
+
   const activeCategories = categories.filter((category) => category.status !== "inactive");
 
   const handleChange = (field, value) => {
@@ -120,6 +212,7 @@ export default function ProductsPage() {
 
     handleReset();
     loadProducts(filters, { silent: true });
+    loadInventoryInsights();
   };
 
   const handleEdit = (product) => {
@@ -174,6 +267,7 @@ export default function ProductsPage() {
     if (editingId === confirm.id) handleReset();
     setConfirm(null);
     loadProducts(filters, { silent: true });
+    loadInventoryInsights();
   };
 
   return (
@@ -240,6 +334,25 @@ export default function ProductsPage() {
       )}
 
       <section className="panel">
+        <div className="sale-summary">
+          <div>
+            <span>Productos activos</span>
+            <strong>{inventoryStatus.totals.products}</strong>
+          </div>
+          <div>
+            <span>Stock bajo</span>
+            <strong className={inventoryStatus.totals.lowStock > 0 ? "warning-text" : ""}>
+              {inventoryStatus.totals.lowStock}
+            </strong>
+          </div>
+          <div>
+            <span>Sin inventario</span>
+            <strong className={inventoryStatus.totals.outOfStock > 0 ? "danger-text" : ""}>
+              {inventoryStatus.totals.outOfStock}
+            </strong>
+          </div>
+        </div>
+
         <div className="toolbar">
           <input className="field" type="search" placeholder="Buscar marca o modelo" value={filters.query} onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} />
           <select className="field select-field" value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}>
@@ -290,8 +403,8 @@ export default function ProductsPage() {
                     <td>{product.model}</td>
                     <td className={product.stock <= product.minStock ? "danger-text" : ""}>{product.stock}</td>
                     <td>{product.minStock}</td>
-                    <td>${product.cost.toFixed(2)}</td>
-                    <td>${product.price.toFixed(2)}</td>
+                    <td>{formatCurrency(product.cost)}</td>
+                    <td>{formatCurrency(product.price)}</td>
                     <td><span className={`status-pill ${product.status}`}>{product.status === "active" ? "Activo" : "Inactivo"}</span></td>
                     <td className="actions-cell">
                       <button className="link-button" type="button" onClick={() => handleEdit(product)}>Editar</button>
@@ -308,6 +421,198 @@ export default function ProductsPage() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="sale-lines-header">
+          <div>
+            <h2>Alertas de stock bajo</h2>
+            <p className="muted-text">Productos activos que ya estan en minimo o por agotarse.</p>
+          </div>
+        </div>
+
+        {inventoryStatus.lowStockProducts.length === 0 ? (
+          <p className="empty-text">No hay productos en stock bajo.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Categoria</th>
+                  <th>Stock</th>
+                  <th>Minimo</th>
+                  <th>Faltante</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inventoryStatus.lowStockProducts.map((product) => (
+                  <tr key={product.id}>
+                    <td>{product.brand} {product.model}</td>
+                    <td>{product.category}</td>
+                    <td className={product.stock <= 0 ? "danger-text" : "warning-text"}>{product.stock}</td>
+                    <td>{product.minStock}</td>
+                    <td>{product.shortage}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="sale-lines-header">
+          <div>
+            <h2>Productos vendidos</h2>
+            <p className="muted-text">
+              Productos: {soldSummary.totals.products} - Unidades: {soldSummary.totals.unitsSold} - Ingreso bruto: {formatCurrency(soldSummary.totals.grossRevenue)}
+            </p>
+          </div>
+        </div>
+
+        <div className="toolbar">
+          <input
+            className="field"
+            type="search"
+            placeholder="Buscar producto vendido"
+            value={soldFilters.query}
+            onChange={(event) => setSoldFilters((current) => ({ ...current, query: event.target.value, page: 1 }))}
+          />
+          <input
+            className="field"
+            type="date"
+            value={soldFilters.from}
+            onChange={(event) => setSoldFilters((current) => ({ ...current, from: event.target.value, page: 1 }))}
+          />
+          <input
+            className="field"
+            type="date"
+            value={soldFilters.to}
+            onChange={(event) => setSoldFilters((current) => ({ ...current, to: event.target.value, page: 1 }))}
+          />
+        </div>
+
+        {soldSummary.products.length === 0 ? (
+          <p className="empty-text">No hay productos vendidos con esos filtros.</p>
+        ) : (
+          <>
+            <div className="table-wrap">
+              <table className="data-table wide-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Categoria</th>
+                    <th>Unidades</th>
+                    <th>Transacciones</th>
+                    <th>Ingreso bruto</th>
+                    <th>Stock actual</th>
+                    <th>Ultima venta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {soldSummary.products.map((product) => (
+                    <tr key={product.productId}>
+                      <td>{product.productName}</td>
+                      <td>{product.category}</td>
+                      <td>{product.unitsSold}</td>
+                      <td>{product.transactions}</td>
+                      <td>{formatCurrency(product.grossRevenue)}</td>
+                      <td className={product.currentStock <= product.minStock ? "warning-text" : ""}>{product.currentStock}</td>
+                      <td>{formatDate(product.lastSoldAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              pagination={soldPagination}
+              onPageChange={(page) => setSoldFilters((current) => ({ ...current, page }))}
+              onPageSizeChange={(pageSize) => setSoldFilters((current) => ({ ...current, page: 1, pageSize }))}
+            />
+          </>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="sale-lines-header">
+          <div>
+            <h2>Auditoria de inventario</h2>
+            <p className="muted-text">Movimientos por alta, ajuste manual y ventas.</p>
+          </div>
+        </div>
+
+        <div className="toolbar">
+          <input
+            className="field"
+            type="search"
+            placeholder="Buscar movimiento"
+            value={movementFilters.query}
+            onChange={(event) => setMovementFilters((current) => ({ ...current, query: event.target.value, page: 1 }))}
+          />
+          <select
+            className="field select-field"
+            value={movementFilters.productId}
+            onChange={(event) => setMovementFilters((current) => ({ ...current, productId: event.target.value, page: 1 }))}
+          >
+            <option value="">Todos los productos</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.brand} {product.model}
+              </option>
+            ))}
+          </select>
+          <select
+            className="field select-field"
+            value={movementFilters.type}
+            onChange={(event) => setMovementFilters((current) => ({ ...current, type: event.target.value, page: 1 }))}
+          >
+            <option value="all">Todos los movimientos</option>
+            <option value="initial_stock">Stock inicial</option>
+            <option value="manual_adjustment">Ajuste manual</option>
+            <option value="sale">Venta</option>
+          </select>
+        </div>
+
+        {movements.length === 0 ? (
+          <p className="empty-text">No hay movimientos de inventario con esos filtros.</p>
+        ) : (
+          <>
+            <div className="table-wrap">
+              <table className="data-table wide-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                    <th>Antes</th>
+                    <th>Despues</th>
+                    <th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movements.map((movement) => (
+                    <tr key={movement.id}>
+                      <td>{formatDate(movement.createdAt)}</td>
+                      <td>{movement.productName}</td>
+                      <td>{movement.type}</td>
+                      <td>{movement.quantity}</td>
+                      <td>{movement.previousStock}</td>
+                      <td>{movement.nextStock}</td>
+                      <td>{movement.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls
+              pagination={movementPagination}
+              onPageChange={(page) => setMovementFilters((current) => ({ ...current, page }))}
+              onPageSizeChange={(pageSize) => setMovementFilters((current) => ({ ...current, page: 1, pageSize }))}
+            />
+          </>
         )}
       </section>
 

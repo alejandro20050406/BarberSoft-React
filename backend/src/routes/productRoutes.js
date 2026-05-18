@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { productStore } from "../data/productStore.js";
+import { salesStore } from "../data/salesStore.js";
 import { readJsonBody, sendJson } from "../utils/http.js";
 
 function parseProductRoute(pathname) {
@@ -7,6 +8,18 @@ function parseProductRoute(pathname) {
 
   if (pathname === basePath) {
     return { matches: true };
+  }
+
+  if (pathname === `${basePath}/inventory-status`) {
+    return { matches: true, collectionAction: "inventory-status" };
+  }
+
+  if (pathname === `${basePath}/movements`) {
+    return { matches: true, collectionAction: "movements" };
+  }
+
+  if (pathname === `${basePath}/sold-summary`) {
+    return { matches: true, collectionAction: "sold-summary" };
   }
 
   const prefix = `${basePath}/`;
@@ -41,6 +54,39 @@ export async function handleProductRoutes(request, response, pathname, searchPar
   }
 
   try {
+    if (request.method === "GET" && route.collectionAction === "inventory-status") {
+      sendStoreResult(response, productStore.getInventoryStatus());
+      return true;
+    }
+
+    if (request.method === "GET" && route.collectionAction === "movements") {
+      sendStoreResult(
+        response,
+        productStore.listInventoryMovements({
+          query: searchParams.get("query") ?? "",
+          productId: searchParams.get("productId") ?? "",
+          type: searchParams.get("type") ?? "all",
+          page: searchParams.get("page") ?? "1",
+          pageSize: searchParams.get("pageSize") ?? "10",
+        }),
+      );
+      return true;
+    }
+
+    if (request.method === "GET" && route.collectionAction === "sold-summary") {
+      sendStoreResult(
+        response,
+        salesStore.listSoldProducts({
+          query: searchParams.get("query") ?? "",
+          from: searchParams.get("from") ?? "",
+          to: searchParams.get("to") ?? "",
+          page: searchParams.get("page") ?? "1",
+          pageSize: searchParams.get("pageSize") ?? "10",
+        }),
+      );
+      return true;
+    }
+
     if (request.method === "GET" && route.id === undefined) {
       sendStoreResult(
         response,

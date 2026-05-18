@@ -1,5 +1,6 @@
 const normalize = (value) => String(value ?? "").trim().toLowerCase();
 const VALID_STATUSES = new Set(["active", "inactive"]);
+const MOVEMENT_TYPES = new Set(["initial_stock", "manual_adjustment", "sale"]);
 
 const productsSeed = [
   {
@@ -80,10 +81,90 @@ function buildProduct(payload, currentProduct = {}) {
   };
 }
 
+function nextId(collection) {
+  return collection.length > 0 ? Math.max(...collection.map((item) => item.id)) + 1 : 1;
+}
+
+function parsePaginationValue(value, fallback, { min = 1, max = 100 } = {}) {
+  const number = Number(value);
+
+  if (!Number.isInteger(number)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, number));
+}
+
+function paginateCollection(collection, filters = {}) {
+  const page = parsePaginationValue(filters.page, 1);
+  const pageSize = parsePaginationValue(filters.pageSize, 10, { min: 1, max: 100 });
+  const totalItems = collection.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+
+  return {
+    items: collection.slice(start, start + pageSize),
+    pagination: {
+      page: currentPage,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasPreviousPage: currentPage > 1,
+      hasNextPage: currentPage < totalPages,
+    },
+  };
+}
+
 function createProductStore(seed) {
   let products = seed.map((product) => ({ ...product }));
+  let inventoryMovements = [];
 
   const findById = (id) => products.find((product) => product.id === id);
+  const buildMovement = ({
+    product,
+    type,
+    quantity,
+    previousStock,
+    nextStock,
+    reason = "",
+    saleId = null,
+    notes = "",
+  }) => ({
+    id: nextId(inventoryMovements),
+    productId: product.id,
+    productName: `${product.brand} ${product.model}`.trim(),
+    category: product.category,
+    type,
+    quantity,
+    previousStock,
+    nextStock,
+    reason,
+    saleId,
+    notes,
+    createdAt: new Date().toISOString(),
+  });
+  const pushMovement = (movement) => {
+    inventoryMovements = [...inventoryMovements, movement];
+    return movement;
+  };
+
+  inventoryMovements = products
+    .filter((product) => product.stock > 0)
+    .map((product, index) => ({
+      id: index + 1,
+      productId: product.id,
+      productName: `${product.brand} ${product.model}`.trim(),
+      category: product.category,
+      type: "initial_stock",
+      quantity: product.stock,
+      previousStock: 0,
+      nextStock: product.stock,
+      reason: "Carga inicial de inventario.",
+      saleId: null,
+      notes: "",
+      createdAt: new Date().toISOString(),
+    }));
 
   return {
     list(filters = {}) {
@@ -105,6 +186,70 @@ function createProductStore(seed) {
       return { ok: true, status: 200, data };
     },
 
+    listInventoryMovements(filters = {}) {
+      const query = normalize(filters.query ?? "");
+      const productId = Number(filters.productId ?? 0);
+      const type = filters.type ?? "all";
+      const filteredMovements = inventoryMovements
+        .filter((movement) => {
+          const product = findById(movement.productId);
+          const matchesQuery =
+            !query ||
+            normalize(movement.productName).includes(query) ||
+            normalize(product?.brand).includes(query) ||
+            normalize(product?.model).includes(query);
+          const matchesProduct = !productId || movement.productId === productId;
+          const matchesType = type === "all" || movement.type === type;
+
+          return matchesQuery && matchesProduct && matchesType;
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const paginated = paginateCollection(filteredMovements, filters);
+
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          movements: paginated.items,
+          pagination: paginated.pagination,
+          filters: {
+            query: filters.query ?? "",
+            productId: filters.productId ?? "",
+            type: type === "all" || MOVEMENT_TYPES.has(type) ? type : "all",
+            page: parsePaginationValue(filters.page, 1),
+            pageSize: parsePaginationValue(filters.pageSize, 10, { min: 1, max: 100 }),
+          },
+        },
+      };
+    },
+
+    getInventoryStatus() {
+      const activeProducts = products.filter((product) => product.status === "active");
+      const lowStockProducts = activeProducts.filter(
+        (product) => product.stock > 0 && product.stock <= product.minStock,
+      );
+      const outOfStockProducts = activeProducts.filter((product) => product.stock <= 0);
+
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          totals: {
+            products: activeProducts.length,
+            lowStock: lowStockProducts.length,
+            outOfStock: outOfStockProducts.length,
+          },
+          lowStockProducts: lowStockProducts
+            .sort((left, right) => left.stock - right.stock)
+            .map((product) => ({
+              ...product,
+              shortage: Math.max(product.minStock - product.stock, 0),
+            })),
+          outOfStockProducts,
+        },
+      };
+    },
+
     findById,
 
     create(payload) {
@@ -114,11 +259,22 @@ function createProductStore(seed) {
         return makeError("No se pudo crear el producto.", errors, 422);
       }
 
-      const id =
-        products.length > 0 ? Math.max(...products.map((product) => product.id)) + 1 : 1;
+      const id = nextId(products);
       const product = { id, ...buildProduct(payload) };
 
       products = [...products, product];
+      if (product.stock > 0) {
+        pushMovement(
+          buildMovement({
+            product,
+            type: "initial_stock",
+            quantity: product.stock,
+            previousStock: 0,
+            nextStock: product.stock,
+            reason: "Alta de producto con stock inicial.",
+          }),
+        );
+      }
 
       return { ok: true, status: 201, data: product };
     },
@@ -138,6 +294,26 @@ function createProductStore(seed) {
 
       const product = buildProduct(payload, currentProduct);
       products = products.map((item) => (item.id === id ? product : item));
+      const stockDelta = product.stock - currentProduct.stock;
+
+      if (stockDelta !== 0) {
+        const type = "manual_adjustment";
+        const reason =
+          stockDelta > 0
+            ? "Ajuste manual de inventario al alza."
+            : "Ajuste manual de inventario a la baja.";
+
+        pushMovement(
+          buildMovement({
+            product,
+            type,
+            quantity: Math.abs(stockDelta),
+            previousStock: currentProduct.stock,
+            nextStock: product.stock,
+            reason,
+          }),
+        );
+      }
 
       return { ok: true, status: 200, data: product };
     },
@@ -159,7 +335,7 @@ function createProductStore(seed) {
       return { ok: true, status: 200, data: product };
     },
 
-    decreaseStock(id, quantity) {
+    decreaseStock(id, quantity, options = {}) {
       const currentProduct = findById(id);
 
       if (!currentProduct) {
@@ -180,8 +356,40 @@ function createProductStore(seed) {
 
       const product = { ...currentProduct, stock: currentProduct.stock - quantity };
       products = products.map((item) => (item.id === id ? product : item));
+      const movement = pushMovement(
+        buildMovement({
+          product,
+          type: "sale",
+          quantity,
+          previousStock: currentProduct.stock,
+          nextStock: product.stock,
+          reason: options.reason ?? "Descuento por venta registrada.",
+          saleId: options.saleId ?? null,
+          notes: options.notes ?? "",
+        }),
+      );
 
-      return { ok: true, status: 200, data: product };
+      return { ok: true, status: 200, data: { product, movement } };
+    },
+
+    __resetForTests() {
+      products = seed.map((product) => ({ ...product }));
+      inventoryMovements = products
+        .filter((product) => product.stock > 0)
+        .map((product, index) => ({
+          id: index + 1,
+          productId: product.id,
+          productName: `${product.brand} ${product.model}`.trim(),
+          category: product.category,
+          type: "initial_stock",
+          quantity: product.stock,
+          previousStock: 0,
+          nextStock: product.stock,
+          reason: "Carga inicial de inventario.",
+          saleId: null,
+          notes: "",
+          createdAt: new Date().toISOString(),
+        }));
     },
   };
 }
