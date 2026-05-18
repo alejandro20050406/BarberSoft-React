@@ -8,5 +8,8 @@
     "start": "node src/index.js",
     "lint": "node --check src/index.js && node --check src/app.js && node --check src/config/env.js && node --check src/controllers/healthController.js && node --check src/data/categoryStores.js && node --check src/data/clientStore.js && node --check src/data/employeeStore.js && node --check src/data/productStore.js && node --check src/data/productStore.test.js && node --check src/data/salesStore.js && node --check src/data/salesStore.test.js && node --check src/data/serviceStore.js && node --check src/routes/categoryRoutes.js && node --check src/routes/clientRoutes.js && node --check src/routes/employeeRoutes.js && node --check src/routes/healthRoutes.js && node --check src/routes/productCategoryRoutes.js && node --check src/routes/productRoutes.js && node --check src/routes/salesRoutes.js && node --check src/routes/serviceCategoryRoutes.js && node --check src/routes/serviceRoutes.js && node --check src/utils/http.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "mysql2": "^3.22.3"
   }
 }
